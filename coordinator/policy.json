@@ -1,0 +1,5 @@
+{
+  "agent_a": { "can_message": ["agent_b"] },
+  "agent_b": { "can_message": ["agent_c"] },
+  "agent_c": { "can_message": [] }
+}

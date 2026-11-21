@@ -1,0 +1,19 @@
+name: Tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Run tests with a fake model
+        run: python -m unittest discover tests -v
+      - name: Check the Docker setup file is valid
+        run: AGENT_A_TOKEN=x AGENT_B_TOKEN=y AGENT_C_TOKEN=z docker compose config -q
