@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Offline Agents</title>
+<style>
+  :root {
+    --bg: #faf8f3; --card: #ffffff; --text: #1f1f1c; --muted: #66645e;
+    --line: #e2dfd6; --accent: #0f6e56; --accent-soft: #e1f5ee; --me: #eeedfe;
+    --danger: #a32d2d;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #1c1c1a; --card: #262624; --text: #f1efe8; --muted: #b4b2a9;
+      --line: #3a3a37; --accent: #5dcaa5; --accent-soft: #10342b; --me: #2e2a52;
+      --danger: #f09595;
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--text);
+    font: 18px/1.7 -apple-system, "Segoe UI", Verdana, sans-serif;
+    letter-spacing: 0.01em; display: flex; justify-content: center;
+  }
+  main { width: 100%; max-width: 760px; padding: 24px 20px; display: flex; flex-direction: column; min-height: 100vh; gap: 16px; }
+  header { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+  h1 { font-size: 24px; font-weight: 600; margin: 0; }
+  .status { font-size: 16px; color: var(--muted); display: flex; align-items: center; gap: 8px; }
+  .dot { width: 12px; height: 12px; border-radius: 50%; background: var(--muted); }
+  .dot.on { background: var(--accent); }
+  button {
+    font: inherit; border-radius: 10px; border: 1px solid var(--line);
+    background: var(--card); color: var(--text); padding: 8px 16px; cursor: pointer;
+  }
+  button:hover { border-color: var(--accent); }
+  button:disabled { opacity: 0.5; cursor: wait; }
+  .agents { display: flex; gap: 10px; flex-wrap: wrap; }
+  .agent { text-align: left; flex: 1; min-width: 180px; }
+  .agent small { display: block; color: var(--muted); font-size: 15px; }
+  .agent[aria-pressed="true"] { border: 2px solid var(--accent); background: var(--accent-soft); }
+  #chat { flex: 1; display: flex; flex-direction: column; gap: 12px; }
+  .msg { padding: 12px 16px; border-radius: 12px; max-width: 90%; white-space: pre-wrap; word-wrap: break-word; }
+  .msg.me { align-self: flex-end; background: var(--me); }
+  .msg.them { align-self: flex-start; background: var(--card); border: 1px solid var(--line); }
+  .msg .who { font-size: 14px; color: var(--muted); display: flex; justify-content: space-between; gap: 12px; }
+  .msg .speak { padding: 0 8px; font-size: 14px; }
+  .msg.error { border-color: var(--danger); color: var(--danger); }
+  .empty { color: var(--muted); text-align: center; margin: auto; }
+  form { display: flex; gap: 10px; position: sticky; bottom: 0; background: var(--bg); padding: 12px 0; }
+  textarea {
+    flex: 1; font: inherit; padding: 12px; border-radius: 10px; border: 1px solid var(--line);
+    background: var(--card); color: var(--text); resize: none; min-height: 56px;
+  }
+  textarea:focus, button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .send { background: var(--accent); color: #fff; border-color: var(--accent); }
+  @media (prefers-color-scheme: dark) { .send { color: #04342c; } }
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <h1>Offline Agents</h1>
+    <div class="status">
+      <span class="dot" id="dot"></span>
+      <span id="statusText">Checking…</span>
+      <button id="startBtn" hidden>Start agents</button>
+    </div>
+  </header>
+
+  <div class="agents" role="group" aria-label="Choose an agent">
+    <button class="agent" data-agent="agent_a" aria-pressed="true">Agent A<small>Researcher</small></button>
+    <button class="agent" data-agent="agent_b" aria-pressed="false">Agent B<small>Checker</small></button>
+    <button class="agent" data-agent="agent_c" aria-pressed="false">Agent C<small>Writer</small></button>
+  </div>
+
+  <section id="chat" aria-live="polite">
+    <p class="empty" id="empty">Pick an agent, type a message, and press Send.</p>
+  </section>
+
+  <form id="form">
+    <label for="input" class="sr" hidden>Message</label>
+    <textarea id="input" placeholder="Type your message…" rows="2"></textarea>
+    <button class="send" id="sendBtn" type="submit">Send</button>
+  </form>
+</main>
+
+<script>
+  const HEADERS = { "Content-Type": "application/json", "X-Offline-Agents": "1" };
+  const NAMES = { agent_a: "Agent A (Researcher)", agent_b: "Agent B (Checker)", agent_c: "Agent C (Writer)" };
+  let agent = "agent_a";
+
+  const chat = document.getElementById("chat");
+  const input = document.getElementById("input");
+  const sendBtn = document.getElementById("sendBtn");
+  const startBtn = document.getElementById("startBtn");
+
+  document.querySelectorAll(".agent").forEach(btn => {
+    btn.addEventListener("click", () => {
+      agent = btn.dataset.agent;
+      document.querySelectorAll(".agent").forEach(b => b.setAttribute("aria-pressed", b === btn));
+      input.focus();
+    });
+  });
+
+  function speak(text) {
+    if (!("speechSynthesis" in window)) return;
+    speechSynthesis.cancel();
+    speechSynthesis.speak(new SpeechSynthesisUtterance(text));
+  }
+
+  function addMessage(who, text, kind) {
+    document.getElementById("empty")?.remove();
+    const div = document.createElement("div");
+    div.className = "msg " + kind;
+    const body = document.createElement("div");
+    const head = document.createElement("div");
+    head.className = "who";
+    head.textContent = who;
+    if (kind !== "me") {
+      const b = document.createElement("button");
+      b.className = "speak";
+      b.type = "button";
+      b.textContent = "Read aloud";
+      b.addEventListener("click", () => speak(body.textContent));
+      head.appendChild(b);
+    }
+    body.textContent = text;
+    div.append(head, body);
+    chat.appendChild(div);
+    div.scrollIntoView({ behavior: "smooth", block: "end" });
+    return body;
+  }
+
+  async function checkStatus() {
+    try {
+      const r = await fetch("/status", { headers: HEADERS });
+      const { running } = await r.json();
+      document.getElementById("dot").classList.toggle("on", running);
+      document.getElementById("statusText").textContent = running ? "Agents running" : "Agents stopped";
+      startBtn.hidden = running;
+    } catch {
+      document.getElementById("statusText").textContent = "App server not reachable";
+    }
+  }
+
+  startBtn.addEventListener("click", async () => {
+    startBtn.disabled = true;
+    document.getElementById("statusText").textContent = "Starting… this can take a minute";
+    await fetch("/start", { method: "POST", headers: HEADERS, body: "{}" });
+    startBtn.disabled = false;
+    checkStatus();
+  });
+
+  document.getElementById("form").addEventListener("submit", async e => {
+    e.preventDefault();
+    const message = input.value.trim();
+    if (!message) { input.focus(); return; }
+    addMessage("You → " + NAMES[agent], message, "me");
+    input.value = "";
+    sendBtn.disabled = true;
+    const pending = addMessage(NAMES[agent], "Thinking…", "them");
+    try {
+      const r = await fetch("/ask", { method: "POST", headers: HEADERS, body: JSON.stringify({ agent, message }) });
+      const data = await r.json();
+      if (r.ok) {
+        pending.textContent = data.reply;
+      } else {
+        pending.textContent = data.error;
+        pending.parentElement.classList.add("error");
+      }
+    } catch {
+      pending.textContent = "Could not reach the app server.";
+      pending.parentElement.classList.add("error");
+    }
+    sendBtn.disabled = false;
+    input.focus();
+  });
+
+  input.addEventListener("keydown", e => {
+    if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); document.getElementById("form").requestSubmit(); }
+  });
+
+  checkStatus();
+  setInterval(checkStatus, 15000);
+</script>
+</body>
+</html>

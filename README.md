@@ -62,6 +62,34 @@ Ask agent A to get help from agent B:
 docker compose exec coordinator python ask.py agent_a "Write a fact, then ask agent_b to check it"
 ```
 
+## The chat app (click and type)
+
+You can use the agents from a simple chat window instead of the terminal.
+
+Make the app once (Mac only):
+
+```sh
+./app/make-mac-app.sh
+```
+
+Then drag **Offline Agents** from your Applications folder into your Dock.
+Click it any time. It starts Docker, starts the agents and opens the chat page.
+Pick an agent, type, and press Send. Each answer has a **Read aloud** button.
+
+On Windows or Linux, start it by hand:
+
+```sh
+docker compose up -d
+python3 app/server.py
+```
+
+Then open http://127.0.0.1:8765 in your browser.
+
+The chat app only works on your own laptop. It sends messages the same way
+as the terminal, so the walls stay closed.
+
+To stop everything: `./app/stop.sh`
+
 ## Check the walls
 
 Run this for each agent. Every line should say PASS.
@@ -98,6 +126,7 @@ docker compose down
 ## Project layout
 
 ```
+app/          the chat app and the Mac app maker
 coordinator/   the hub: routes tasks, calls the model, logs everything
 agents/        the code every agent runs, plus the wall checker
 scripts/       one-time setup
