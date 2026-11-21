@@ -1,0 +1,372 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Second Brain</title>
+<style>
+  :root {
+    --bg: #f7f5f0; --card: #ffffff; --text: #1f1f1c; --muted: #5f5e5a; --line: #e3e0d7;
+    --accent: #0f6e56; --accent-soft: #e1f5ee; --warn: #854f0b; --warn-soft: #faeeda;
+    --bad: #a32d2d; --bad-soft: #fcebeb; --info: #3c3489; --info-soft: #eeedfe;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #1b1b19; --card: #252523; --text: #f1efe8; --muted: #b4b2a9; --line: #3a3a37;
+      --accent: #5dcaa5; --accent-soft: #0f3a2f; --warn: #fac775; --warn-soft: #3d2a0c;
+      --bad: #f09595; --bad-soft: #3e1a1a; --info: #afa9ec; --info-soft: #26215c;
+    }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text);
+    font: 17px/1.65 -apple-system, "Segoe UI", Verdana, sans-serif; letter-spacing: 0.01em; }
+  header { display: flex; align-items: center; justify-content: space-between; gap: 16px;
+    padding: 14px 24px; border-bottom: 1px solid var(--line); background: var(--card); flex-wrap: wrap; }
+  h1 { font-size: 22px; margin: 0; font-weight: 600; }
+  h2 { font-size: 17px; margin: 0 0 10px; font-weight: 600; }
+  .pill { display: inline-flex; align-items: center; gap: 6px; font-size: 14px; padding: 4px 12px;
+    border-radius: 999px; background: var(--accent-soft); color: var(--accent); font-weight: 500; }
+  .pill.warn { background: var(--warn-soft); color: var(--warn); }
+  .pill.bad { background: var(--bad-soft); color: var(--bad); }
+  .layout { display: grid; grid-template-columns: 250px minmax(0, 1fr) 300px; gap: 20px;
+    padding: 20px 24px; max-width: 1400px; margin: 0 auto; }
+  @media (max-width: 1100px) { .layout { grid-template-columns: 1fr; } }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 16px 18px; }
+  .stack { display: flex; flex-direction: column; gap: 16px; }
+  .muted { color: var(--muted); font-size: 15px; }
+  button { font: inherit; font-size: 15px; border-radius: 10px; border: 1px solid var(--line);
+    background: var(--card); color: var(--text); padding: 7px 14px; cursor: pointer; }
+  button:hover { border-color: var(--accent); }
+  button:disabled { opacity: 0.55; cursor: wait; }
+  button.primary { background: var(--accent); color: #fff; border-color: var(--accent); }
+  @media (prefers-color-scheme: dark) { button.primary { color: #04342c; } }
+  :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+  .comp { display: flex; align-items: center; justify-content: space-between; gap: 8px;
+    padding: 10px 0; border-top: 1px solid var(--line); }
+  .comp:first-of-type { border-top: 0; }
+  .comp .name { font-weight: 600; }
+  .switch { position: relative; width: 46px; height: 26px; flex: none; }
+  .switch input { opacity: 0; width: 100%; height: 100%; position: absolute; margin: 0; cursor: pointer; z-index: 1; }
+  .switch span { position: absolute; inset: 0; background: var(--line); border-radius: 13px; transition: background .2s; }
+  .switch span::after { content: ""; position: absolute; top: 3px; left: 3px; width: 20px; height: 20px;
+    background: #fff; border-radius: 50%; transition: transform .2s; }
+  .switch input:checked + span { background: var(--accent); }
+  .switch input:checked + span::after { transform: translateX(20px); }
+  .addform { display: none; flex-direction: column; gap: 8px; margin-top: 10px; }
+  .addform.open { display: flex; }
+  input[type=text], textarea { font: inherit; padding: 9px 11px; border-radius: 10px; border: 1px solid var(--line);
+    background: var(--bg); color: var(--text); width: 100%; }
+  .error { color: var(--bad); font-size: 14px; }
+
+  .meeting { display: flex; align-items: center; justify-content: space-between; gap: 12px;
+    background: var(--info-soft); border: 1px solid transparent; flex-wrap: wrap; }
+  .meeting .title { font-weight: 600; font-size: 18px; color: var(--info); }
+  .chips { display: flex; gap: 8px; flex-wrap: wrap; }
+  .chips button { border-radius: 999px; font-size: 14px; }
+  .askrow { display: flex; gap: 10px; }
+  .askrow textarea { resize: none; min-height: 52px; }
+
+  .answer .top { display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 8px; }
+  .answer .q { font-weight: 600; }
+  .answer .body p, .answer .body li { margin: 4px 0; }
+  .answer .body ul { padding-left: 22px; margin: 6px 0; }
+  .cite { display: inline-block; min-width: 22px; text-align: center; font-size: 12px; font-weight: 600;
+    background: var(--accent-soft); color: var(--accent); border-radius: 6px; padding: 0 5px; margin: 0 1px;
+    cursor: pointer; border: 0; vertical-align: 1px; line-height: 1.6; }
+  .box { border-radius: 10px; padding: 10px 14px; margin-top: 10px; }
+  .box.warn { background: var(--warn-soft); color: var(--warn); }
+  .box.miss { background: var(--info-soft); color: var(--info); }
+  .box strong { display: block; }
+  .why { margin-top: 12px; font-size: 15px; color: var(--muted); }
+  details.sources { margin-top: 10px; }
+  details.sources summary { cursor: pointer; font-weight: 600; font-size: 15px; }
+  .src { border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; margin-top: 8px; font-size: 15px; }
+  .src.used { border-left: 4px solid var(--accent); }
+  .src.flash { outline: 2px solid var(--accent); }
+  .src .meta { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+  .src .file { font-weight: 600; }
+  .src pre { white-space: pre-wrap; font: 14px/1.55 ui-monospace, Menlo, monospace; margin: 8px 0 0;
+    background: var(--bg); padding: 8px 10px; border-radius: 8px; }
+  .tag { font-size: 12px; padding: 1px 8px; border-radius: 999px; background: var(--bg); color: var(--muted); }
+  .tag.flag { background: var(--warn-soft); color: var(--warn); }
+  .empty { text-align: center; color: var(--muted); padding: 30px 10px; }
+  .thinking { color: var(--muted); }
+
+  .check { display: flex; gap: 10px; align-items: flex-start; padding: 8px 0; border-top: 1px solid var(--line); }
+  .check:first-of-type { border-top: 0; }
+  .tick { flex: none; width: 24px; height: 24px; border-radius: 50%; display: grid; place-items: center;
+    font-size: 14px; font-weight: 700; background: var(--accent-soft); color: var(--accent); }
+  .tick.no { background: var(--bad-soft); color: var(--bad); }
+  .check .t { font-weight: 600; font-size: 15px; }
+  .check .d { font-size: 14px; color: var(--muted); }
+  .results { font-size: 14px; margin-top: 8px; }
+  .results div { padding: 3px 0; }
+  .btnrow { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
+</style>
+</head>
+<body>
+<header>
+  <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap">
+    <h1>Second Brain</h1>
+    <span class="pill" id="localPill">&#128274; Runs only on this laptop</span>
+  </div>
+  <span class="pill" id="modelPill">Checking AI model…</span>
+</header>
+
+<div class="layout">
+  <!-- LEFT: what the assistant may see -->
+  <aside class="stack">
+    <div class="card">
+      <h2>What I can see</h2>
+      <p class="muted" style="margin-top:0">Switch a folder off and I won't open it. You can change your mind any time.</p>
+      <div id="comps"></div>
+      <button id="addToggle" style="margin-top:8px">+ Add a folder</button>
+      <div class="addform" id="addForm">
+        <input type="text" id="addName" placeholder="Name, e.g. Meetings">
+        <input type="text" id="addPath" placeholder="Folder path, e.g. ~/Documents/Notes">
+        <button class="primary" id="addBtn">Add</button>
+        <div class="error" id="addErr"></div>
+      </div>
+    </div>
+  </aside>
+
+  <!-- MIDDLE: ask -->
+  <main class="stack">
+    <div class="card meeting" id="meetingCard" hidden>
+      <div>
+        <div class="muted">Your next meeting</div>
+        <div class="title" id="meetingTitle"></div>
+      </div>
+      <button class="primary" id="prepBtn">Prepare me</button>
+    </div>
+
+    <div class="card stack" style="gap:12px">
+      <div class="askrow">
+        <textarea id="q" rows="2" placeholder="Ask about your notes, e.g. When is the patient app launching?"></textarea>
+        <button class="primary" id="askBtn">Ask</button>
+      </div>
+      <div class="chips" id="chips">
+        <button>When is the patient app launching?</button>
+        <button>What actions are overdue?</button>
+        <button>Who has capacity to take on QA?</button>
+        <button>What did we decide about the Q2 budget for Lagos?</button>
+      </div>
+    </div>
+
+    <div id="answers" class="stack">
+      <div class="card empty" id="empty">Pick your next meeting, a suggestion, or type a question.<br>I'll show you exactly which notes I used.</div>
+    </div>
+  </main>
+
+  <!-- RIGHT: trust panel -->
+  <aside class="stack">
+    <div class="card">
+      <h2>Check it yourself</h2>
+      <div id="checks"></div>
+      <div class="btnrow">
+        <button id="leakBtn">Try to break the rule</button>
+        <button id="lsofBtn">Ask my Mac what's connected</button>
+      </div>
+      <div class="results" id="checkResults"></div>
+    </div>
+    <div class="card">
+      <h2>Read this session</h2>
+      <div class="muted" id="reads">Nothing yet.</div>
+      <div class="btnrow"><button id="forgetBtn">Forget this session</button></div>
+    </div>
+  </aside>
+</div>
+
+<script>
+const H = { "Content-Type": "application/json", "X-Second-Brain": "1" };
+const $ = id => document.getElementById(id);
+const esc = s => String(s).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+let nextMeeting = null;
+let answerCount = 0;
+
+async function api(path, body) {
+  const opts = body === undefined ? { headers: H } : { method: "POST", headers: H, body: JSON.stringify(body) };
+  const r = await fetch(path, opts);
+  const data = await r.json().catch(() => ({ error: "Something went wrong." }));
+  if (!r.ok) throw new Error(data.error || "Something went wrong.");
+  return data;
+}
+
+async function loadState() {
+  const s = await api("/api/state");
+  const ms = s.model_status;
+  const pill = $("modelPill");
+  if (!ms.running) { pill.className = "pill bad"; pill.textContent = "AI model not running: open Ollama"; }
+  else if (!ms.model_ready) { pill.className = "pill warn"; pill.textContent = `Model ${s.model} not downloaded yet`; }
+  else { pill.className = "pill"; pill.textContent = `AI model: ${s.model}, on this laptop`; }
+
+  $("comps").innerHTML = s.compartments.map(c => `
+    <div class="comp">
+      <div><div class="name">${esc(c.name)}</div><div class="muted">${c.files} file${c.files === 1 ? "" : "s"}</div></div>
+      <label class="switch" title="${c.enabled ? "On" : "Off"}">
+        <input type="checkbox" data-name="${esc(c.name)}" ${c.enabled ? "checked" : ""} aria-label="Let the assistant see ${esc(c.name)}">
+        <span></span>
+      </label>
+    </div>`).join("");
+  document.querySelectorAll("#comps input").forEach(i => i.addEventListener("change", async () => {
+    await api("/api/compartment", { action: "toggle", name: i.dataset.name, enabled: i.checked });
+    loadState();
+  }));
+
+  nextMeeting = s.next_meeting;
+  $("meetingCard").hidden = !nextMeeting;
+  if (nextMeeting) $("meetingTitle").textContent = `${nextMeeting.title} · ${nextMeeting.date}`;
+}
+
+function renderAnswerText(text) {
+  const lines = text.split("\n");
+  let html = "", inList = false, warn = [], miss = [], section = "main";
+  for (let raw of lines) {
+    const line = raw.trim();
+    if (!line) continue;
+    const plain = line.replace(/^[-*•#\d.\s]+(?=[A-Za-z])/, "").replace(/\*\*/g, "");
+    if (/^watch out:?/i.test(plain)) { section = "warn"; const r = plain.replace(/^watch out:?\s*/i, ""); if (r) warn.push(r); continue; }
+    if (/^not in your notes:?/i.test(plain)) { section = "miss"; const r = plain.replace(/^not in your notes:?\s*/i, ""); if (r) miss.push(r); continue; }
+    if (section === "warn") { warn.push(plain); continue; }
+    if (section === "miss") { miss.push(plain); continue; }
+    const content = esc(line.replace(/^[-*•]\s*/, "").replace(/\*\*(.+?)\*\*/g, "$1"));
+    if (/^[-*•]\s/.test(line)) { if (!inList) { html += "<ul>"; inList = true; } html += `<li>${content}</li>`; }
+    else { if (inList) { html += "</ul>"; inList = false; } html += `<p>${content}</p>`; }
+  }
+  if (inList) html += "</ul>";
+  const cites = s => s.replace(/\[(\d+)\]/g, '<button class="cite" data-n="$1" title="Show source $1">$1</button>');
+  let out = cites(html);
+  if (warn.length) out += `<div class="box warn"><strong>Watch out</strong>${cites(esc(warn.join(" ")))}</div>`;
+  if (miss.length) out += `<div class="box miss"><strong>Not in your notes</strong>${cites(esc(miss.join(" ")))}</div>`;
+  return out;
+}
+
+function confidencePill(level) {
+  if (level === "high") return '<span class="pill">Confidence: high</span>';
+  if (level === "medium") return '<span class="pill warn">Confidence: medium</span>';
+  if (level === "none") return '<span class="pill warn">Not found</span>';
+  return '<span class="pill bad">Confidence: low</span>';
+}
+
+function sourceCard(s, id) {
+  const age = s.age_days == null ? "" : s.age_days === 0 ? " · today" : s.age_days > 0 ? ` · ${s.age_days} days ago` : ` · in ${-s.age_days} days`;
+  const flags = s.flags.map(f => `<span class="tag flag">${esc(f)}</span>`).join("");
+  return `<div class="src ${s.used ? "used" : ""}" id="${id}-src-${s.n}">
+    <div class="meta"><span class="cite" style="cursor:default">${s.n}</span>
+      <span class="file">${esc(s.file)}</span>
+      <span class="tag">${esc(s.kind)}</span>${flags}</div>
+    <div class="muted">${esc(s.date_label)}${age} (date from ${esc(s.date_source)}) · lines ${esc(s.lines)} · ${s.used ? "used in the answer" : "found, not used"}</div>
+    <pre>${esc(s.text)}</pre></div>`;
+}
+
+async function ask(question) {
+  question = question.trim();
+  if (!question) { $("q").focus(); return; }
+  $("empty")?.remove();
+  const id = "a" + (++answerCount);
+  const card = document.createElement("div");
+  card.className = "card answer";
+  card.id = id;
+  card.innerHTML = `<div class="top"><span class="q">${esc(question)}</span></div><div class="thinking">Reading your notes on this laptop…</div>`;
+  $("answers").prepend(card);
+  $("askBtn").disabled = $("prepBtn").disabled = true;
+  try {
+    const r = await api("/api/ask", { question });
+    const used = r.sources.filter(s => s.used), unused = r.sources.filter(s => !s.used);
+    card.innerHTML = `
+      <div class="top"><span class="q">${esc(question)}</span>
+        <span style="display:flex;gap:8px;align-items:center">${confidencePill(r.confidence)}
+        <button class="speak">Read aloud</button></span></div>
+      <div class="body">${r.found ? renderAnswerText(r.answer) : `<p>${esc(r.answer)}</p>`}${r.found && r.missing.length ? `<div class="box miss"><strong>Checked by code</strong>None of your notes mention: ${esc(r.missing.join(", "))}. Anything above about that is only loosely related.</div>` : ""}</div>
+      <div class="why"><strong>Why:</strong> ${esc(r.confidence_reason)}</div>
+      <div class="why"><strong>Where this came from:</strong> ${esc(r.explanation)}</div>
+      ${r.sources.length ? `<details class="sources" ${r.sources.length <= 4 ? "open" : ""}>
+        <summary>Show the ${r.sources.length} notes I looked at</summary>
+        ${used.concat(unused).map(s => sourceCard(s, id)).join("")}</details>` : ""}
+      <div class="muted" style="margin-top:8px">Answered in ${r.seconds}s · nothing saved</div>`;
+    card.querySelectorAll(".cite[data-n]").forEach(b => b.addEventListener("click", () => {
+      card.querySelector("details.sources").open = true;
+      const el = $(`${id}-src-${b.dataset.n}`);
+      if (el) { el.scrollIntoView({ behavior: "smooth", block: "center" }); el.classList.add("flash"); setTimeout(() => el.classList.remove("flash"), 1500); }
+    }));
+    card.querySelector(".speak").addEventListener("click", () => {
+      const copy = card.querySelector(".body").cloneNode(true);
+      copy.querySelectorAll(".cite").forEach(c => c.remove());
+      const text = copy.innerText;
+      speechSynthesis.cancel(); speechSynthesis.speak(new SpeechSynthesisUtterance(text));
+    });
+  } catch (e) {
+    card.innerHTML = `<div class="top"><span class="q">${esc(question)}</span></div><div class="error">${esc(e.message)}</div>`;
+  }
+  $("askBtn").disabled = $("prepBtn").disabled = false;
+  loadTrust();
+}
+
+async function loadTrust() {
+  const t = await api("/api/trust");
+  const allowed = Object.entries(t.network.allowed);
+  const outside = t.network.blocked.length;
+  const check = (ok, title, detail) => `<div class="check"><div class="tick ${ok ? "" : "no"}">${ok ? "✓" : "!"}</div>
+    <div><div class="t">${title}</div><div class="d">${detail}</div></div></div>`;
+  $("checks").innerHTML =
+    check(t.guards_on, "Nothing leaves this laptop",
+      allowed.length ? `Only talked to: ${allowed.map(([k, v]) => `${esc(k)} (this laptop, ${v}×)`).join(", ")}.` : "No connections made yet.")
+    + check(true, "Blocked attempts", outside ? `${outside} attempt${outside > 1 ? "s" : ""} to reach outside were blocked.` : "None so far.")
+    + check(t.writes.files_written === 0, "No copies kept",
+      `This app has saved 0 files. It has no database, index or log.${t.model_forgets ? " The AI model unloads after every answer." : ""}`)
+    + check(t.notes.unchanged, t.notes.unchanged ? "Your notes are untouched" : "Your notes changed",
+      `${t.notes.files} files. Fingerprint ${esc(t.notes.fingerprint)} ${t.notes.unchanged ? "matches" : "differs from"} the one taken at start.`);
+  $("reads").innerHTML = t.session_reads.length
+    ? t.session_reads.map(r => `<div style="margin-bottom:6px"><strong>${esc(r.question.slice(0, 60))}${r.question.length > 60 ? "…" : ""}</strong><br>${r.files.length} files read, then forgotten</div>`).join("")
+    : "Nothing yet.";
+}
+
+$("leakBtn").addEventListener("click", async () => {
+  const r = await api("/api/try-to-leak", {});
+  $("checkResults").innerHTML = "<strong>I just tried to:</strong>" + r.results.map(x =>
+    `<div>${x.blocked ? "✓ Blocked" : "✗ NOT blocked"}: ${esc(x.test)}</div>`).join("");
+  loadTrust();
+});
+
+$("lsofBtn").addEventListener("click", async () => {
+  $("checkResults").textContent = "Asking your Mac…";
+  const r = await api("/api/check-connections", {});
+  if (!r.checked) { $("checkResults").textContent = r.note || "Could not check."; return; }
+  let html = `<strong>Your Mac says (using the lsof tool):</strong>`;
+  for (const p of r.processes) {
+    if (!p.running) { html += `<div>${esc(p.name)}: not running</div>`; continue; }
+    const out = p.connections.filter(c => !c.local_only).length;
+    html += `<div>${esc(p.name)}: ${p.connections.length} connection${p.connections.length === 1 ? "" : "s"}, ${out ? `<strong style="color:var(--bad)">${out} to outside</strong>` : "all on this laptop ✓"}</div>`;
+  }
+  html += r.outside.length ? "" : `<div class="muted">No connections leave this laptop. You can also turn Wi-Fi off and it keeps working.</div>`;
+  $("checkResults").innerHTML = html;
+});
+
+$("forgetBtn").addEventListener("click", async () => {
+  await api("/api/forget", {});
+  $("answers").innerHTML = '<div class="card empty" id="empty">Forgotten. Nothing from this session is kept anywhere.</div>';
+  loadTrust();
+});
+
+$("addToggle").addEventListener("click", () => $("addForm").classList.toggle("open"));
+$("addBtn").addEventListener("click", async () => {
+  $("addErr").textContent = "";
+  try {
+    await api("/api/compartment", { action: "add", name: $("addName").value, path: $("addPath").value });
+    $("addName").value = $("addPath").value = "";
+    $("addForm").classList.remove("open");
+    loadState(); loadTrust();
+  } catch (e) { $("addErr").textContent = e.message; }
+});
+
+$("askBtn").addEventListener("click", () => { const q = $("q").value; $("q").value = ""; ask(q); });
+$("q").addEventListener("keydown", e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); $("askBtn").click(); } });
+$("prepBtn").addEventListener("click", () => nextMeeting && ask(nextMeeting.question));
+document.querySelectorAll("#chips button").forEach(b => b.addEventListener("click", () => ask(b.textContent)));
+
+loadState(); loadTrust();
+setInterval(loadState, 20000);
+</script>
+</body>
+</html>

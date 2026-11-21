@@ -1,0 +1,10 @@
+{
+  "model": "llama3.2:3b",
+  "model_keep_alive": "0",
+  "port": 8765,
+  "compartments": [
+    { "name": "Team", "path": "sample-notes/Team", "enabled": true },
+    { "name": "Projects", "path": "sample-notes/Projects", "enabled": true },
+    { "name": "Personal", "path": "sample-notes/Personal", "enabled": false }
+  ]
+}
