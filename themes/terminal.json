@@ -1,0 +1,15 @@
+{
+  "name": "Terminal",
+  "author": "Codicilix",
+  "mode": "dark",
+  "font": "mono",
+  "radius": 2,
+  "colors": {
+    "accent": "#39d353",
+    "background": "#0b0f0b",
+    "panel": "#101710",
+    "text": "#d7f5d7",
+    "muted": "#7fa67f",
+    "line": "#1f2e1f"
+  }
+}

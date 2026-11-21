@@ -1,0 +1,15 @@
+{
+  "name": "Midnight",
+  "author": "Codicilix",
+  "mode": "dark",
+  "font": "system",
+  "radius": 14,
+  "colors": {
+    "accent": "#7c8cff",
+    "background": "#0e1020",
+    "panel": "#171a2e",
+    "text": "#e7e9f7",
+    "muted": "#9aa0c3",
+    "line": "#272b47"
+  }
+}

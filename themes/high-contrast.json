@@ -1,0 +1,15 @@
+{
+  "name": "High contrast",
+  "author": "Codicilix",
+  "mode": "light",
+  "font": "verdana",
+  "radius": 4,
+  "colors": {
+    "accent": "#0040c0",
+    "background": "#ffffff",
+    "panel": "#ffffff",
+    "text": "#000000",
+    "muted": "#333333",
+    "line": "#000000"
+  }
+}

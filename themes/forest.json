@@ -1,0 +1,15 @@
+{
+  "name": "Forest",
+  "author": "Codicilix",
+  "mode": "dark",
+  "font": "rounded",
+  "radius": 18,
+  "colors": {
+    "accent": "#3fae7a",
+    "background": "#14201a",
+    "panel": "#1b2a22",
+    "text": "#e8f1ea",
+    "muted": "#9db5a6",
+    "line": "#2c4035"
+  }
+}

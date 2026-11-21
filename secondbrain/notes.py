@@ -8,6 +8,7 @@ Supported kinds of notes:
   .csv            action-item lists
   .ics            calendar events and reminders
   .webloc .url    saved links
+  .png .jpg .jpeg .heic  screenshots and photos (text read on this laptop)
 """
 
 import csv
@@ -17,6 +18,8 @@ import io
 import os
 import re
 
+from . import ocr
+
 KINDS = {
     ".md": "note",
     ".txt": "note",
@@ -24,7 +27,12 @@ KINDS = {
     ".ics": "calendar",
     ".webloc": "saved link",
     ".url": "saved link",
+    ".png": "screenshot or photo",
+    ".jpg": "screenshot or photo",
+    ".jpeg": "screenshot or photo",
+    ".heic": "screenshot or photo",
 }
+ALL_KINDS = sorted(set(KINDS.values()))
 MAX_FILE_BYTES = 512 * 1024
 
 MONTHS = {
@@ -192,7 +200,14 @@ def _chunks_from_ics(text, base):
         elif line.startswith("END:VEVENT") or line.startswith("END:VTODO"):
             fields = dict(l.split(":", 1) for l in block if ":" in l)
             summary = fields.get("SUMMARY", "(no title)")
-            when = fields.get("DTSTART") or fields.get("DUE") or ""
+            raw = fields.get("DTSTART") or fields.get("DUE") or ""
+            m = re.match(r"(\d{4})(\d\d)(\d\d)(?:T(\d\d)(\d\d))?", raw)
+            when = raw
+            if m:
+                d = dt.date(int(m.group(1)), int(m.group(2)), int(m.group(3)))
+                when = f"{d.strftime('%a')} {d.day} {d.strftime('%b %Y')}"
+                if m.group(4):
+                    when += f", {m.group(4)}:{m.group(5)}"
             out.append(base(f"{kind}: {summary} — {when}", start, i))
             kind = None
         elif kind:
@@ -210,9 +225,10 @@ def _chunks_from_link(text, rel, ext, base):
     return [base(f"Saved link: {title} — {url}", 1, 1)]
 
 
-def read_compartment(name, folder, today):
-    """Read every supported note in one folder. Returns (chunks, files_read)."""
-    chunks, files = [], []
+def read_compartment(name, folder, today, kinds=None):
+    """Read every supported note in one folder. Returns (chunks, files_read).
+    'kinds' limits which kinds of content may be read (the user's choice)."""
+    chunks, files, images = [], [], []
     folder = os.path.expanduser(folder)
     if not os.path.isdir(folder):
         return chunks, files
@@ -222,15 +238,22 @@ def read_compartment(name, folder, today):
             ext = os.path.splitext(fname)[1].lower()
             if fname.startswith(".") or ext not in KINDS:
                 continue
+            kind = KINDS[ext]
+            if kinds is not None and kind not in kinds:
+                continue
             path = os.path.join(root, fname)
             rel = os.path.join(name, os.path.relpath(path, folder))
+            mtime = dt.date.fromtimestamp(os.path.getmtime(path))
+
+            if kind == "screenshot or photo":
+                images.append((path, rel, fname, mtime))
+                continue
+
             text = _read_text(path)
             if text is None:
                 continue
             files.append(rel)
-            kind = KINDS[ext]
             per_line = kind == "note" and ("scrap" in fname.lower() or "standup" in fname.lower())
-            mtime = dt.date.fromtimestamp(os.path.getmtime(path))
 
             # When was this note written? Try the file name, then the first
             # two lines (the heading). Dates later in a note are often about
@@ -264,6 +287,21 @@ def read_compartment(name, folder, today):
             else:
                 new = _chunks_from_text(text, base)
             chunks.extend(add_flags(c, today) for c in new)
+
+    # Screenshots and photos: read their text on this laptop, all in one go.
+    if images:
+        texts = ocr.read_images([p for p, _, _, _ in images])
+        for path, rel, fname, mtime in images:
+            text = texts.get(path)
+            files.append(rel)
+            if not text:
+                continue
+            d, src = find_date(fname, today), "file name"
+            if d is None or d > today:
+                d, src = mtime, "file last changed"
+            lines = text.count("\n") + 1
+            c = Chunk(name, path, rel, "screenshot or photo", "[Text read from image]\n" + text, 1, lines, d, src)
+            chunks.append(add_flags(c, today))
     return chunks, files
 
 

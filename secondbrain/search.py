@@ -4,6 +4,7 @@ It scores every piece fresh for each question, in memory (BM25 scoring).
 No search index is built or saved, because an index would be a copy.
 """
 
+import datetime as dt
 import math
 import re
 from collections import Counter
@@ -22,7 +23,8 @@ STOP = set(
     did decide decided decision decisions change changed changes still
     monday tuesday wednesday thursday friday saturday sunday today tomorrow yesterday
     january february march april june july august september october november december
-    jan feb mar apr jun jul aug sep sept oct nov dec""".split()
+    jan feb mar apr jun jul aug sep sept oct nov dec week weeks month months day days
+    past recent recently lately upcoming coming made make happening""".split()
 )
 # Words like "decision" are in STOP for matching, but we still use them to
 # give a small boost to pieces that record decisions.
@@ -56,9 +58,64 @@ def keywords(question):
     return out
 
 
+def time_window(question, today):
+    """Understand questions about time, like 'this week' or 'yesterday'.
+    Returns (first day, last day) or None."""
+    if today is None:
+        return None
+    q = question.lower()
+    d = dt.timedelta
+    rules = [
+        ("yesterday", (today - d(1), today - d(1))),
+        ("today", (today, today)),
+        ("next week", (today, today + d(7))),
+        ("upcoming", (today, today + d(14))),
+        ("coming up", (today, today + d(14))),
+        ("last week", (today - d(14), today - d(7))),
+        ("this week", (today - d(7), today)),
+        ("past week", (today - d(7), today)),
+        ("last 7 days", (today - d(7), today)),
+        ("this month", (today - d(30), today)),
+        ("last month", (today - d(30), today)),
+        ("past month", (today - d(30), today)),
+        ("recently", (today - d(14), today)),
+        ("lately", (today - d(14), today)),
+    ]
+    for phrase, window in rules:
+        if phrase in q:
+            return window
+    return None
+
+
+def _spread(scored, top_k, per_file):
+    picked, per = [], Counter()
+    for s, c in scored:
+        limit = per_file if c.kind == "note" else 4
+        if per[c.rel] < limit:
+            picked.append((s, c))
+            per[c.rel] += 1
+    return picked[:top_k]
+
+
 def search(question, chunks, top_k=10, k1=1.4, b=0.75, per_file=2, today=None):
     """Return (best pieces with scores, keywords not found anywhere)."""
     q = tokens(question)
+    window = time_window(question, today)
+    ql = question.lower()
+    wants = [k for k, words in BOOSTS.items() if k in ql or any(w in ql for w in words)]
+
+    if window:
+        start, end = window
+        chunks = [c for c in chunks if c.date and start <= c.date <= end]
+        if not q:
+            # A question only about time: newest first, decisions/actions first if asked.
+            def rank(c):
+                text = c.text.lower()
+                hit = any(any(w in text for w in BOOSTS[k]) for k in wants)
+                return (not hit, -(c.date.toordinal()))
+            ordered = sorted(chunks, key=rank)
+            return _spread([(1.0, c) for c in ordered], top_k, per_file), []
+
     if not q or not chunks:
         return [], keywords(question)
 
@@ -68,9 +125,6 @@ def search(question, chunks, top_k=10, k1=1.4, b=0.75, per_file=2, today=None):
     df = Counter()
     for d in docs:
         df.update(set(d))
-
-    ql = question.lower()
-    wants = [k for k, words in BOOSTS.items() if k in ql or any(w in ql for w in words)]
 
     scored = []
     for chunk, d in zip(chunks, docs):
@@ -95,13 +149,7 @@ def search(question, chunks, top_k=10, k1=1.4, b=0.75, per_file=2, today=None):
     scored.sort(key=lambda x: (-x[0], x[1].rel, x[1].line_start))
 
     # Show a spread of notes, not many pieces of the same file.
-    picked, per = [], Counter()
-    for s, c in scored:
-        limit = per_file if c.kind == "note" else 4  # action lists and calendars hold many small items
-        if per[c.rel] < limit:
-            picked.append((s, c))
-            per[c.rel] += 1
-    scored = picked
+    picked = _spread(scored, len(scored), per_file)
 
     found_terms = set()
     for d in docs:
@@ -110,4 +158,4 @@ def search(question, chunks, top_k=10, k1=1.4, b=0.75, per_file=2, today=None):
         w for w in keywords(question)
         if not w.isdigit() and stem(w.lower()) not in found_terms
     ]
-    return scored[:top_k], missing
+    return picked[:top_k], missing

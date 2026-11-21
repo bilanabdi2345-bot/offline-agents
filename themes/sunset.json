@@ -1,0 +1,15 @@
+{
+  "name": "Sunset",
+  "author": "Codicilix",
+  "mode": "light",
+  "font": "rounded",
+  "radius": 22,
+  "colors": {
+    "accent": "#e2553d",
+    "background": "#fff4ec",
+    "panel": "#ffffff",
+    "text": "#2e1d18",
+    "muted": "#8c6a5d",
+    "line": "#f5dccd"
+  }
+}

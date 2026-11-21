@@ -1,0 +1,15 @@
+{
+  "name": "Paper",
+  "author": "Codicilix",
+  "mode": "light",
+  "font": "serif",
+  "radius": 6,
+  "colors": {
+    "accent": "#8b4a2b",
+    "background": "#f4efe4",
+    "panel": "#fbf8f1",
+    "text": "#2b2620",
+    "muted": "#7a6f62",
+    "line": "#e3d9c6"
+  }
+}

@@ -1,4 +1,4 @@
-"""Start Second Brain:  python3 -B -m secondbrain
+"""Start Codicilix:  python3 -B -m secondbrain
 
 The guards go on FIRST, before anything reads a note.
 """
@@ -13,6 +13,7 @@ guards.install()
 
 import json  # noqa: E402
 import os  # noqa: E402
+import secrets  # noqa: E402
 import webbrowser  # noqa: E402
 
 from .server import serve  # noqa: E402
@@ -33,9 +34,11 @@ def load_config():
 def main():
     config = load_config()
     port = int(os.environ.get("PORT", config.get("port", 8765)))
-    server, _ = serve(config, port)
-    url = f"http://127.0.0.1:{port}"
-    print(f"Second Brain is running at {url}")
+    # A fresh secret key for this launch. Only the window we open gets it.
+    token = os.environ.get("SECOND_BRAIN_TOKEN") or secrets.token_urlsafe(24)
+    server, _ = serve(config, port, token)
+    url = f"http://127.0.0.1:{port}/#k={token}"
+    print(f"Codicilix is running at http://127.0.0.1:{port}")
     print("It only talks to this laptop. Press Ctrl+C to stop.")
     if "--no-browser" not in sys.argv:
         try:

@@ -1,20 +1,32 @@
 #!/bin/bash
-# Makes a clickable "Second Brain" app for your Mac. Run once:
+# Makes a clickable "Codicilix" app for your Mac. Run once:
 #     ./scripts/make-mac-app.sh
-# Then drag "Second Brain" from Applications into your Dock.
+# Then drag "Codicilix" from Applications into your Dock.
 set -e
 PROJECT="$(cd "$(dirname "$0")/.." && pwd)"
 PYTHON="$(command -v python3)"
-APP="$HOME/Applications/Second Brain.app"
+APP="$HOME/Applications/Codicilix.app"
 [ -z "$PYTHON" ] && { echo "Please install Python 3 first."; exit 1; }
+
+# Build the on-device screenshot reader (Apple Vision). Needs Xcode's command
+# line tools, which come with git on a Mac. Skipped quietly if missing.
+if command -v swiftc >/dev/null; then
+  echo "Building the screenshot reader (about 30 seconds)..."
+  mkdir -p "$PROJECT/bin"
+  swiftc -O "$PROJECT/scripts/ocr.swift" -o "$PROJECT/bin/second-brain-ocr" \
+    && echo "Screenshot reader ready." \
+    || echo "Couldn't build the screenshot reader. Everything else still works."
+else
+  echo "Swift not found, so screenshots will be skipped. To add it: xcode-select --install"
+fi
 
 mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
 cat > "$APP/Contents/Info.plist" <<'PLIST'
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0"><dict>
-  <key>CFBundleName</key><string>Second Brain</string>
-  <key>CFBundleIdentifier</key><string>local.second-brain</string>
+  <key>CFBundleName</key><string>Codicilix</string>
+  <key>CFBundleIdentifier</key><string>local.codicilix</string>
   <key>CFBundleVersion</key><string>1.0</string>
   <key>CFBundlePackageType</key><string>APPL</string>
   <key>CFBundleExecutable</key><string>launch</string>
@@ -25,15 +37,12 @@ PLIST
 cat > "$APP/Contents/MacOS/launch" <<LAUNCH
 #!/bin/bash
 export PATH="/usr/local/bin:/opt/homebrew/bin:\$PATH"
-URL="http://127.0.0.1:8765"
 # Start the local AI model app if it isn't running.
 pgrep -iq ollama || open -a Ollama 2>/dev/null
-# Start Second Brain if it isn't running. Its output goes nowhere: no log file.
-if ! curl -s -o /dev/null "\$URL"; then
-  cd "$PROJECT" && nohup "$PYTHON" -B -m secondbrain --no-browser >/dev/null 2>&1 &
-  for i in \$(seq 1 30); do curl -s -o /dev/null "\$URL" && break; sleep 0.3; done
-fi
-open "\$URL"
+# Start Codicilix fresh each time, with a new secret key. It opens its own
+# window with that key. Nothing is lost by restarting, because nothing is saved.
+pkill -f "secondbrain" 2>/dev/null; sleep 0.5
+cd "$PROJECT" && nohup "$PYTHON" -B -m secondbrain >/dev/null 2>&1 &
 LAUNCH
 chmod +x "$APP/Contents/MacOS/launch"
 

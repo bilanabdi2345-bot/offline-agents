@@ -1,4 +1,4 @@
-"""Tests for Second Brain. No AI model needed: they use a fake one.
+"""Tests for Codicilix. No AI model needed: they use a fake one.
 
 Run:  python3 -B -m unittest discover tests
 """
@@ -17,6 +17,8 @@ import urllib.request
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, ROOT)
 os.environ["FAKE_LLM"] = "1"
+os.environ["FAKE_OCR"] = "1"
+os.environ["FAKE_OCR_TEXT"] = "Quick Note: Q4 marketing budget finance said NO"
 os.environ["TODAY"] = "2026-11-22"
 
 from secondbrain import brain, notes, search  # noqa: E402
@@ -37,7 +39,7 @@ class ReadingNotes(unittest.TestCase):
     def test_reads_every_kind(self):
         chunks, files = notes.read_compartment("Projects", os.path.join(SAMPLE, "Projects"), DAY)
         kinds = {c.kind for c in chunks}
-        self.assertEqual(kinds, {"note", "action list", "calendar", "saved link"})
+        self.assertEqual(kinds, {"note", "action list", "calendar", "saved link", "screenshot or photo"})
         self.assertIn("Projects/action-items.csv", files)
 
     def test_messy_dates(self):
@@ -58,6 +60,30 @@ class ReadingNotes(unittest.TestCase):
         self.assertTrue(all("overdue" not in c.flags for c in done))
 
 
+class ReadingImages(unittest.TestCase):
+    def test_real_text_reader_reads_screenshot(self):
+        from secondbrain import ocr
+        os.environ.pop("FAKE_OCR")
+        try:
+            if ocr.engine() is None:
+                self.skipTest("no text reader on this computer")
+            ocr.forget()
+            path = os.path.join(SAMPLE, "Projects", "Screenshot 2026-11-18 at 16.42.10.png")
+            text = ocr.read_images([path])[path]
+            self.assertIn("finance said NO", text)
+            self.assertEqual(ocr.held_in_memory(), 1)
+            ocr.forget()
+            self.assertEqual(ocr.held_in_memory(), 0)
+        finally:
+            os.environ["FAKE_OCR"] = "1"
+
+    def test_images_can_be_switched_off(self):
+        c = comps()
+        c.set_kind("screenshot or photo", False)
+        _, files, _ = c.read_all(DAY)
+        self.assertFalse(any(f.endswith((".png", ".jpg")) for f in files))
+
+
 class Searching(unittest.TestCase):
     def setUp(self):
         self.chunks = []
@@ -73,6 +99,11 @@ class Searching(unittest.TestCase):
     def test_finds_overdue_by_flag(self):
         hits, _ = search.search("What actions are overdue?", self.chunks, today=DAY)
         self.assertIn("overdue", hits[0][1].flags)
+
+    def test_time_question(self):
+        hits, _ = search.search("What happened this week?", self.chunks, today=DAY)
+        self.assertTrue(hits)
+        self.assertTrue(all((DAY - c.date).days <= 7 for _, c in hits))
 
     def test_reports_missing_words(self):
         _, missing = search.search("What did we decide about the Lagos budget?", self.chunks, today=DAY)
@@ -101,6 +132,12 @@ class Answering(unittest.TestCase):
         self.assertTrue(r["found"])
         self.assertTrue(r["sources"])
         self.assertIn("I kept no copy", r["explanation"])
+
+    def test_meetings_link_notes_written_that_day(self):
+        m = brain.meetings(comps())
+        retro = [x for x in m["past"] if x["title"] == "Team retro"][0]
+        self.assertTrue(any("Whiteboard" in r["file"] for r in retro["related"]))
+        self.assertEqual(m["upcoming"][0]["title"], "1:1 with Priya")
 
     def test_next_meeting(self):
         m = brain.meeting_question(comps())
@@ -144,12 +181,29 @@ def free_port():
         return s.getsockname()[1]
 
 
+class Themes(unittest.TestCase):
+    def test_folder_themes_load(self):
+        from secondbrain import themes
+        found, problems = themes.load_all()
+        self.assertGreaterEqual(len(found), 6)
+        self.assertEqual(problems, [])
+
+    def test_bad_or_sneaky_themes_rejected(self):
+        from secondbrain import themes
+        good = {k: "#112233" for k in themes.COLOR_KEYS}
+        self.assertIsNone(themes.validate({"name": "x", "colors": {**good, "accent": "url(http://evil)"}})[0])
+        self.assertIsNone(themes.validate({"name": "x", "colors": good, "font": "Comic; } body { x"})[0])
+        clean, _ = themes.validate({"name": "<script>x</script>", "colors": good, "css": "evil", "js": "evil"})
+        self.assertNotIn("css", clean)
+        self.assertNotIn("<", clean["name"])
+
+
 class Server(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         cls.port = free_port()
         cls.url = f"http://127.0.0.1:{cls.port}"
-        env = dict(os.environ, PORT=str(cls.port))
+        env = dict(os.environ, PORT=str(cls.port), SECOND_BRAIN_TOKEN="test-key")
         cls.proc = subprocess.Popen(
             [sys.executable, "-B", "-m", "secondbrain", "--no-browser"], cwd=ROOT, env=env,
             stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
@@ -167,7 +221,7 @@ class Server(unittest.TestCase):
         cls.proc.wait()
 
     def call(self, path, body=None, headers=None):
-        h = {"Content-Type": "application/json", "X-Second-Brain": "1", **(headers or {})}
+        h = {"Content-Type": "application/json", "X-Second-Brain": "test-key", **(headers or {})}
         data = None if body is None else json.dumps(body).encode()
         req = urllib.request.Request(self.url + path, data=data, headers=h)
         with urllib.request.urlopen(req, timeout=10) as r:
@@ -175,7 +229,7 @@ class Server(unittest.TestCase):
 
     def test_page_and_state(self):
         html = urllib.request.urlopen(self.url).read().decode()
-        self.assertIn("Second Brain", html)
+        self.assertIn("Codicilix", html)
         s = self.call("/api/state")
         self.assertEqual([c["name"] for c in s["compartments"]], ["Team", "Projects", "Personal"])
 
@@ -195,9 +249,63 @@ class Server(unittest.TestCase):
         r = self.call("/api/ask", {"question": "reorg"})
         self.assertFalse(any(f.startswith("Personal") for f in r["files_read"]))
 
+    def test_streaming_answer(self):
+        req = urllib.request.Request(
+            self.url + "/api/ask-stream",
+            data=json.dumps({"question": "When is the patient app launching?"}).encode(),
+            headers={"Content-Type": "application/json", "X-Second-Brain": "test-key"},
+        )
+        with urllib.request.urlopen(req, timeout=10) as r:
+            events = [json.loads(line) for line in r if line.strip()]
+        types = [e["type"] for e in events]
+        self.assertEqual(types[0], "start")
+        self.assertIn("token", types)
+        self.assertEqual(types[-1], "done")
+        self.assertTrue(events[0]["sources"])  # sources arrive before the AI writes
+
+    def test_streaming_not_found(self):
+        req = urllib.request.Request(
+            self.url + "/api/ask-stream",
+            data=json.dumps({"question": "xylophone"}).encode(),
+            headers={"Content-Type": "application/json", "X-Second-Brain": "test-key"},
+        )
+        with urllib.request.urlopen(req, timeout=10) as r:
+            events = [json.loads(line) for line in r if line.strip()]
+        self.assertEqual([e["type"] for e in events], ["start", "done"])
+        self.assertIn("couldn't find", events[-1]["answer"])
+
+    def test_meetings_and_kinds(self):
+        m = self.call("/api/meetings")
+        self.assertTrue(m["upcoming"] and m["past"])
+        self.call("/api/kind", {"kind": "screenshot or photo", "enabled": False})
+        r = self.call("/api/ask", {"question": "Q4 marketing budget"})
+        self.assertFalse(any(f.endswith(".png") for f in r["files_read"]))
+        self.call("/api/kind", {"kind": "screenshot or photo", "enabled": True})
+
+    def test_themes_api(self):
+        r = self.call("/api/themes")
+        self.assertIn("Forest", [t["name"] for t in r["themes"]])
+        with self.assertRaises(urllib.error.HTTPError):
+            self.call("/api/theme-check", {"name": "bad", "colors": {}})
+
+    def test_checkup(self):
+        r = self.call("/api/checkup", {})
+        by = {x["name"]: x["status"] for x in r["results"]}
+        self.assertEqual(by["Nothing can leave this laptop"], "pass")
+        self.assertEqual(by["No copies can be saved"], "pass")
+        self.assertEqual(by["Other programs are locked out"], "pass")
+        self.assertEqual(by["Switched-off folders stay closed"], "pass")
+        self.assertEqual(by["Honest when it doesn't know"], "pass")
+
     def test_try_to_leak_is_blocked(self):
         r = self.call("/api/try-to-leak", {})
         self.assertTrue(all(x["blocked"] for x in r["results"]))
+
+    def test_other_programs_without_key_blocked(self):
+        for key in ("", "1", "wrong-key"):
+            with self.assertRaises(urllib.error.HTTPError) as ctx:
+                self.call("/api/ask", {"question": "Priya"}, headers={"X-Second-Brain": key})
+            self.assertEqual(ctx.exception.code, 403)
 
     def test_other_websites_blocked(self):
         with self.assertRaises(urllib.error.HTTPError) as ctx:

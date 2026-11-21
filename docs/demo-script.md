@@ -1,10 +1,10 @@
-# Demo video script (about 3 minutes)
+# Demo video script (about 3 to 4 minutes)
 
 Record your screen with QuickTime: File, then New Screen Recording. Speak slowly. Each part maps to a judging criterion.
 
 ## Before you record
 - Open the Ollama app.
-- Open Second Brain. Check the top right says "AI model: llama3.2:3b, on this laptop".
+- Open Codicilix. Check the top right says "AI model: llama3.2:3b, on this laptop".
 - Make sure **Personal** is switched **off**.
 - Ask one question first to warm the model up, then click **Forget this session**.
 - Have the sample notes folder open in Finder, ready to show.
@@ -19,7 +19,7 @@ Record your screen with QuickTime: File, then New Screen Recording. Speak slowly
 ## 2. The one useful moment (50 seconds) · Working end to end, Creative use of AI
 **Show:** click **Prepare me** on the "1:1 with Priya" card. Wait for the answer.
 
-**Say:** "Second Brain found the meeting in my calendar and pulled together what matters. What happened last time, what's still open, and what to follow up on."
+**Say:** "Codicilix found the meeting in my calendar and pulled together what matters. What happened last time, what's still open, and what to follow up on."
 
 **Point at:** the Watch out box. "It warns me that two of my own actions are overdue. That warning comes from code, not the AI, so I can rely on it."
 
@@ -35,6 +35,13 @@ Record your screen with QuickTime: File, then New Screen Recording. Speak slowly
 
 **Say:** "There's nothing about Lagos in my notes. So it tells me that, instead of making something up."
 
+## 4b. Screenshots and meetings (30 seconds) · Bonus: more than one kind of notes
+**Click** the quick ask "Q4 budget (from a screenshot)".
+
+**Say:** "This answer came from a screenshot of a quick note. My Mac read the text itself. Nothing went online. And it spotted that my action list still shows this as open, but the screenshot says it's been answered."
+
+**Go to Meetings.** "Every meeting is linked to the notes written that day. Here's the team retro, linked to the photo of the whiteboard. One click gives a recap."
+
 ## 5. In control (25 seconds) · Knowledge stays yours
 **Say:** "My Personal folder is switched off." Ask: "What do I know about the reorg?" Show that it says it didn't look in Personal.
 
@@ -43,7 +50,7 @@ Record your screen with QuickTime: File, then New Screen Recording. Speak slowly
 **Say:** "Switched off means never opened. Not just hidden: the files aren't read at all. I can change my mind any time."
 
 ## 6. Check it yourself (35 seconds) · Knowledge stays yours
-**Point at** the "Check it yourself" panel.
+**Go to Check-up and press Run check-up.** "Ten checks, in plain English. All clear."
 
 **Click** "Try to break the rule". **Say:** "The app just tried to reach the internet and save a copy of my notes. All three attempts were blocked."
 
@@ -54,4 +61,4 @@ Record your screen with QuickTime: File, then New Screen Recording. Speak slowly
 **Say:** "It saved zero files. No database, no index. It reads my notes fresh, answers, and forgets. My notes' fingerprint matches, so they're exactly where they were."
 
 ## 7. Close (10 seconds)
-**Say:** "Second Brain. You already wrote it down. Now it helps you, without ever leaving your hands."
+**Say:** "Codicilix. Your second brain. You already wrote it down. Now it helps you, without ever leaving your hands."

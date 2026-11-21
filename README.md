@@ -1,17 +1,34 @@
-# Second Brain
+# Codicilix
 
-A private assistant for a manager's scattered notes.
+A private second brain for a manager's scattered notes.
 It runs only on your laptop. Nothing it reads ever leaves the laptop.
 It keeps no copy of your notes.
 
 Built for the Pfizer AI Studio and Newpage hackathon, University of Bristol, November 2026.
+
+## Five pages
+
+- **Ask**: a chat about your notes, with quick asks down the side and your next meeting ready to prepare for.
+- **Meetings**: past and upcoming meetings from your calendar, each linked to the notes written that day. **Prepare me** for what's coming, **Recap** for what's done.
+- **Folders & access**: switch folders on or off, and choose which kinds of things may be read: notes, action lists, calendars, saved links, and screenshots & photos.
+- **Check-up**: one button tests every promise. Add a monthly reminder to your calendar.
+- **Appearance & themes**: a theme gallery (Paper, Midnight, Forest, Sunset, High contrast, Terminal), a theme maker, theme import and download, text size, and an easy-read mode with extra spacing that helps with dyslexia.
+
+## Themes you can make and share
+
+Like Obsidian, anyone can make a theme and share it as a small file.
+Drop theme files into the `themes/` folder, or import one from the app.
+A theme can only hold colours, a font choice and corner size. It can't hold code or web addresses, so any theme is safe to use. Every theme is checked before it's applied.
+See [themes/README.md](themes/README.md) for the format.
+
+Screenshots and whiteboard photos are read by Apple's built-in Vision text reader, on the laptop.
 
 ## The moment it fixes
 
 You have a 1:1 in ten minutes. Your notes about that person are spread across
 meeting notes, an action list, stand-up scraps and a calendar reminder.
 
-Click **Prepare me**. Second Brain gathers what matters:
+Click **Prepare me**. Codicilix gathers what matters:
 - what happened last time,
 - which actions are still open or overdue,
 - what has changed since,
@@ -30,6 +47,7 @@ When something isn't in your notes, it says so instead of guessing.
 | Your notes stay as they were | Files are only ever opened read-only. | A fingerprint of all notes is taken at start and re-checked live. |
 | You choose what it sees | Notes are split into compartments (Team, Projects, Personal). Switched off means never opened. | Switch Personal off and ask about it: the answer says it didn't look there, and the file list proves it. |
 | Honest when unsure | If nothing matches, the AI isn't even asked; you get "I couldn't find that". Warnings for overdue, unfinished, old and private notes come from code, not the AI. | Ask about something that isn't there, e.g. "the Q2 budget for Lagos". |
+| Safe even next to other programs | A new secret key every launch, only given to the app window. Other programs on the laptop (even malware) and other websites are refused. The AI has no tools, so a note with hidden instructions can't make it send anything. | Open http://127.0.0.1:8765 in a new tab without the key: it's refused. |
 | Explains itself | Every answer lists the files read, the files used, dates and ages, and a confidence level with the reason. | Click any numbered source chip. |
 
 More detail: [docs/how-it-keeps-notes-yours.md](docs/how-it-keeps-notes-yours.md)
@@ -47,7 +65,7 @@ More detail: [docs/how-it-keeps-notes-yours.md](docs/how-it-keeps-notes-yours.md
    cd offline-agents
    ./scripts/make-mac-app.sh
    ```
-4. In Applications, right-click **Second Brain** and choose **Open** (first time only).
+4. In Applications, right-click **Codicilix** and choose **Open** (first time only).
 
 You can now turn Wi-Fi off. It keeps working.
 
@@ -63,7 +81,7 @@ Edit `config.json`. Add a compartment with a name and a folder path:
 ```
 
 Or click **+ Add a folder** in the app (this lasts until you close it).
-It reads `.md`, `.txt`, `.csv` action lists, `.ics` calendar files and saved links (`.webloc`, `.url`).
+It reads `.md`, `.txt`, `.csv` action lists, `.ics` calendar files, saved links (`.webloc`, `.url`), and screenshots and photos (`.png`, `.jpg`, `.heic`).
 
 ## Sample notes
 
@@ -78,7 +96,7 @@ private folder.
 python3 -B -m unittest discover tests
 ```
 
-17 tests. They use a fake AI model, so they run anywhere.
+30 tests. They use a fake AI model, so they run anywhere.
 
 ## Project layout
 
@@ -89,10 +107,14 @@ secondbrain/
   search.py     finds matching notes for each question (no saved index)
   brain.py      builds the answer with the local AI model, explains it
   trust.py      the checks behind the trust panel
+  checkup.py    the full check-up
+  ocr.py        reads text in screenshots and photos, on the laptop
+  themes.py     checks theme files so they can only change looks
   server.py     the local web server (127.0.0.1 only)
   static/       the app window
 sample-notes/   made-up notes for the demo
-scripts/        Mac app maker and stop script
+themes/         theme files (add your own here)
+scripts/        Mac app maker, screenshot reader (ocr.swift), stop script
 tests/          automatic tests
 docs/           design notes, demo script
 ```

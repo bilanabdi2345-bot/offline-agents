@@ -8,7 +8,7 @@ Please find my submission for the Second Brain for Managers challenge.
 **Prototype:** https://github.com/bilanabdi2345-bot/offline-agents
 **Demo video:** [paste your video link here]
 
-**Second Brain** is a private assistant for a manager's scattered notes. It runs entirely on the laptop, with a local AI model.
+**Codicilix** is a private second brain for a manager's scattered notes. It runs entirely on the laptop, with a local AI model.
 
 The moment it improves is preparing for a 1:1. With one click, it pulls together what happened last time, open and overdue actions, what has changed, and what to follow up on. Every point links to the exact note it came from.
 
