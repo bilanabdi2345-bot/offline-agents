@@ -212,6 +212,29 @@
   .maker label { display: flex; flex-direction: column; gap: 4px; font-size: 0.85em; font-weight: 600; }
   .maker input[type=color] { width: 100%; height: 40px; border: 1px solid var(--line); border-radius: 10px; padding: 3px; background: var(--panel); cursor: pointer; }
   .maker select, .maker input[type=text] { padding: 9px 10px; border-radius: 10px; border: 1px solid var(--line); background: var(--sunk); }
+  /* ---------- Pictures: attach, view, select text ---------- */
+  .thumbs { display: flex; gap: 8px; flex-wrap: wrap; padding: 0 4px 8px; }
+  .thumb { position: relative; width: 64px; height: 64px; border-radius: 10px; overflow: hidden; border: 1px solid var(--line); background: var(--sunk); }
+  .thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .thumb button { position: absolute; top: 2px; right: 2px; width: 20px; height: 20px; border-radius: 50%; border: 0;
+    background: rgba(0,0,0,.6); color: #fff; font-size: 12px; line-height: 20px; padding: 0; cursor: pointer; }
+  .you .thumbs { padding: 0 0 6px; }
+  .you .thumb { border-color: transparent; }
+  .clip { border: 0; background: transparent; font-size: 20px; cursor: pointer; padding: 4px 8px; border-radius: 10px; }
+  .clip:hover { background: var(--sunk); }
+  .composer.drag .row { outline: 2px dashed var(--a); outline-offset: 4px; }
+  .viewer { position: fixed; inset: 0; z-index: 50; background: rgba(10,10,10,.72); display: flex; align-items: center; justify-content: center; padding: 24px; }
+  .viewer .panel { background: var(--panel); border-radius: 16px; max-width: min(1100px, 96vw); max-height: 94vh; display: flex; flex-direction: column; overflow: hidden; }
+  .viewer .bar { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 12px 16px; border-bottom: 1px solid var(--line); flex-wrap: wrap; }
+  .viewer .stage { overflow: auto; padding: 16px; background: var(--sunk); }
+  .viewer .pic { position: relative; display: inline-block; line-height: 0; }
+  .viewer .pic img { max-width: min(1050px, 90vw); max-height: 70vh; display: block; border-radius: 6px; }
+  .ocrword { position: absolute; color: transparent; line-height: 1; white-space: pre; cursor: text; border-radius: 3px;
+    user-select: text; -webkit-user-select: text; overflow: hidden; }
+  .ocrword:hover { background: rgba(80,140,255,.18); outline: 1px solid rgba(80,140,255,.5); }
+  .ocrword::selection { background: rgba(80,140,255,.45); color: transparent; }
+  .ocrword.hl { background: rgba(255,214,0,.42); outline: 2px solid rgba(230,180,0,.9); }
+  .viewer .foot { padding: 10px 16px; border-top: 1px solid var(--line); font-size: 0.85em; color: var(--muted); }
 </style>
 </head>
 <body>
@@ -243,9 +266,12 @@
               <p class="muted">Ask anything about your notes. I'll show exactly where every answer came from,<br>and I won't keep a copy.</p>
             </div>
           </div>
-          <div class="composer">
+          <div class="composer" id="composer">
+            <div class="thumbs" id="thumbs" hidden></div>
             <div class="row">
-              <textarea id="q" rows="1" placeholder="Ask about your notes…" aria-label="Your question"></textarea>
+              <button class="clip" id="clipBtn" title="Add a photo or screenshot (or paste / drop one)" aria-label="Add a picture">📎</button>
+              <input type="file" id="clipFile" accept="image/png,image/jpeg,image/heic" multiple hidden>
+              <textarea id="q" rows="1" placeholder="Ask about your notes… or paste a photo or screenshot" aria-label="Your question"></textarea>
               <button class="btn primary" id="askBtn">Ask</button>
             </div>
           </div>
@@ -410,6 +436,14 @@
       </div>
     </section>
   </main>
+  <div class="viewer" id="viewer" hidden role="dialog" aria-modal="true" aria-label="Photo viewer">
+    <div class="panel">
+      <div class="bar"><b id="viewerTitle">Photo</b>
+        <span style="display:flex;gap:8px"><button class="btn" id="viewerCopy">Copy all text</button><button class="btn primary" id="viewerClose">Close</button></span></div>
+      <div class="stage"><div class="pic" id="viewerPic"></div></div>
+      <div class="foot" id="viewerFoot">Select words on the photo to copy them. Yellow shows words that match your question. Read on this laptop, never saved.</div>
+    </div>
+  </div>
 </div>
 
 <script>
@@ -704,18 +738,95 @@ function sourceCard(s, id) {
     <div class="meta"><span class="cite" style="cursor:default">${s.n}</span><b>${esc(s.file)}</b>
       <span class="tag">${KIND_ICON[s.kind] || ""} ${esc(s.kind)}</span>${flags}</div>
     <div class="muted small">${esc(s.date_label)}${age} · date from ${esc(s.date_source)} · ${s.used ? "used in the answer" : "found, not used"}</div>
+    ${s.kind === "screenshot or photo" ? `<button class="btn" style="margin-top:8px" data-view-file="${s.paste_id ? "" : esc(s.file)}" data-view-paste="${esc(s.paste_id || "")}" data-view-name="${esc(s.file.split("/").pop())}">🔍 View photo</button>` : ""}
     <pre>${esc(s.text)}</pre></div>`;
 }
+
+/* ---------- Pictures: paste, drop or attach (kept in memory only) ---------- */
+const attachments = [];
+const STOP_WORDS = new Set("the and for what when where which who why how does did was were are this that with from have has about into your you my our they them their its can could would should will just like any some all not but out over".split(" "));
+function renderThumbs() {
+  const box = $("thumbs");
+  box.hidden = !attachments.length;
+  box.innerHTML = attachments.map((im, i) => `<div class="thumb" title="${esc(im.name)}"><img src="${im.data}" alt="${esc(im.name)}"><button data-i="${i}" aria-label="Remove picture">×</button></div>`).join("");
+  box.querySelectorAll("button").forEach(b => b.onclick = () => { attachments.splice(+b.dataset.i, 1); renderThumbs(); });
+}
+function addFiles(files) {
+  for (const f of files) {
+    if (!f.type.startsWith("image/") || attachments.length >= 3) continue;
+    if (f.size > 12 * 1024 * 1024) { alertBox("That picture is too big (over 12 MB)."); continue; }
+    const reader = new FileReader();  // read on this laptop; it only goes to Codicilix, which runs here
+    reader.onload = () => { attachments.push({ name: f.name && f.name !== "image.png" ? f.name : `pasted picture ${attachments.length + 1}`, data: reader.result }); renderThumbs(); };
+    reader.readAsDataURL(f);
+  }
+}
+function alertBox(msg) { const m = $("thumbs"); m.hidden = false; m.insertAdjacentHTML("beforeend", `<span class="error">${esc(msg)}</span>`); }
+$("clipBtn").onclick = () => $("clipFile").click();
+$("clipFile").onchange = e => { addFiles(e.target.files); e.target.value = ""; };
+document.addEventListener("paste", e => {
+  if (!document.getElementById("page-ask").classList.contains("on")) return;
+  const files = [...(e.clipboardData?.items || [])].filter(i => i.kind === "file").map(i => i.getAsFile()).filter(Boolean);
+  if (files.length) { e.preventDefault(); addFiles(files); }
+});
+const comp = $("composer");
+["dragenter", "dragover"].forEach(ev => comp.addEventListener(ev, e => { e.preventDefault(); comp.classList.add("drag"); }));
+["dragleave", "drop"].forEach(ev => comp.addEventListener(ev, e => { e.preventDefault(); comp.classList.remove("drag"); }));
+comp.addEventListener("drop", e => addFiles(e.dataTransfer.files));
+
+/* ---------- Photo viewer: select text on the photo, highlight matches (like Google Lens) ---------- */
+let viewerText = "", viewerUrl = null;
+async function openViewer({ file, paste, name, terms }) {
+  const qs = paste ? `paste=${encodeURIComponent(paste)}` : `f=${encodeURIComponent(file)}`;
+  $("viewerTitle").textContent = name || "Photo";
+  $("viewerPic").innerHTML = '<span class="thinking"><span class="spin"></span>Loading…</span>';
+  $("viewer").hidden = false;
+  try {
+    const [imgRes, layout] = await Promise.all([fetch(`/api/image?${qs}`, { headers: H }), api(`/api/image-layout?${qs}`)]);
+    if (!imgRes.ok) throw new Error((await imgRes.json().catch(() => ({}))).error || "Couldn't open that picture.");
+    const blob = await imgRes.blob();
+    if (viewerUrl) URL.revokeObjectURL(viewerUrl);
+    viewerUrl = URL.createObjectURL(blob);
+    viewerText = layout.text || "";
+    const norm = w => w.toLowerCase().replace(/[^a-z0-9]/g, "");
+    const want = (terms || []).map(norm).filter(w => w.length >= 3);
+    const hit = w => { const n = norm(w); return n.length >= 3 && want.some(t => n === t || n.startsWith(t) || t.startsWith(n) && n.length >= 4); };
+    const img = new Image();
+    img.alt = name || "Photo";
+    img.onload = () => {
+      const words = layout.words || [];
+      const layer = words.map(w => `<span class="ocrword${hit(w.t) ? " hl" : ""}" style="left:${w.x * 100}%;top:${w.y * 100}%;width:${w.w * 100}%;height:${w.h * 100}%;font-size:${Math.max(8, w.h * img.clientHeight * 0.85)}px">${esc(w.t)} </span>`).join("");
+      $("viewerPic").innerHTML = "";
+      $("viewerPic").append(img);
+      $("viewerPic").insertAdjacentHTML("beforeend", layer);
+      const n = words.filter(w => hit(w.t)).length;
+      $("viewerFoot").textContent = words.length
+        ? `Select words on the photo to copy them.${n ? ` ${n} word${n > 1 ? "s" : ""} in yellow match your question.` : ""} Read on this laptop, never saved.`
+        : "No word positions for this picture, but you can still read it here. Read on this laptop, never saved.";
+    };
+    img.onerror = () => { $("viewerPic").innerHTML = `<p class="muted" style="line-height:1.6;padding:20px">This picture's format can't be shown in the window (HEIC photos, for example). Its text is below.</p><pre style="line-height:1.5;padding:0 20px 20px;white-space:pre-wrap">${esc(viewerText)}</pre>`; };
+    img.src = viewerUrl;
+  } catch (e) { $("viewerPic").innerHTML = `<p class="error" style="padding:20px;line-height:1.6">${esc(e.message)}</p>`; }
+}
+function closeViewer() { $("viewer").hidden = true; $("viewerPic").innerHTML = ""; if (viewerUrl) { URL.revokeObjectURL(viewerUrl); viewerUrl = null; } }
+$("viewerClose").onclick = closeViewer;
+$("viewer").onclick = e => { if (e.target.id === "viewer") closeViewer(); };
+document.addEventListener("keydown", e => { if (e.key === "Escape" && !$("viewer").hidden) closeViewer(); });
+$("viewerCopy").onclick = async () => {
+  try { await navigator.clipboard.writeText(viewerText); $("viewerCopy").textContent = "Copied ✓"; setTimeout(() => $("viewerCopy").textContent = "Copy all text", 1500); } catch {}
+};
 
 let answerCount = 0;
 async function ask(question) {
   question = question.trim();
-  if (!question) { $("q").focus(); return; }
+  const images = attachments.splice(0); renderThumbs();
+  if (!question && !images.length) { $("q").focus(); return; }
   show("ask");
   $("hello")?.remove();
   const id = "a" + (++answerCount);
   const you = document.createElement("div");
-  you.className = "you"; you.textContent = question;
+  you.className = "you";
+  if (images.length) you.innerHTML = `<div class="thumbs">${images.map(im => `<div class="thumb"><img src="${im.data}" alt=""></div>`).join("")}</div>`;
+  you.append(document.createTextNode(question || "What does this picture say?"));
   const card = document.createElement("div");
   card.className = "card answer"; card.id = id;
   card.innerHTML = `
@@ -738,11 +849,19 @@ async function ask(question) {
     q(".srcbox").innerHTML = `<details class="sources" ${open ? "open" : ""}><summary>Show the ${sources.length} notes I looked at</summary>
       ${ordered.map(s => sourceCard(s, id)).join("")}</details>`;
   };
-  const wireCites = () => card.querySelectorAll(".cite[data-n]").forEach(b => b.onclick = () => {
+  const highlightTerms = () => {
+    const words = (question || "").toLowerCase().match(/[a-z0-9]{3,}/g) || [];
+    const extra = (ctx && ctx.also_looked_for) || [];
+    const fixed = ((ctx && ctx.spelling) || []).map(s => s.read_as);
+    return [...new Set(words.concat(extra, fixed))].filter(w => !STOP_WORDS.has(w));
+  };
+  const wireViews = () => card.querySelectorAll("[data-view-file], [data-view-paste]").forEach(b => b.onclick = () =>
+    openViewer({ file: b.dataset.viewFile, paste: b.dataset.viewPaste, name: b.dataset.viewName, terms: highlightTerms() }));
+  const wireCites = () => { wireViews(); card.querySelectorAll(".cite[data-n]").forEach(b => b.onclick = () => {
     const d = q("details.sources"); if (d) d.open = true;
     const el = $(`${id}-src-${b.dataset.n}`);
     if (el) { el.scrollIntoView({ behavior: "smooth", block: "center" }); el.classList.add("flash"); setTimeout(() => el.classList.remove("flash"), 1500); }
-  });
+  }); };
   const handle = ev => {
     if (ev.type === "start") {
       ctx = ev;
@@ -750,6 +869,9 @@ async function ask(question) {
       if (ev.found) {
         q(".body").innerHTML = `<span class="thinking"><span class="spin"></span>Found ${ev.sources.length} matching notes in ${secs}s. Writing…</span>`;
         showSources(ev.sources, false);
+        const pics = ev.sources.filter(s => s.kind === "screenshot or photo").filter((x, i, a) => a.findIndex(y => y.file === x.file) === i);
+        if (pics.length) q(".codebox").insertAdjacentHTML("afterbegin", `<div class="box" style="display:flex;gap:8px;flex-wrap:wrap;align-items:center"><b style="margin:0">📷 Pictures used</b>${pics.map(s => `<button class="btn" data-view-file="${s.paste_id ? "" : esc(s.file)}" data-view-paste="${esc(s.paste_id || "")}" data-view-name="${esc(s.file.split("/").pop())}">🔍 ${esc(s.file.split("/").pop())}</button>`).join("")}</div>`);
+        wireViews();
         if (ev.brief && ev.brief.new_since.length) q(".codebox").insertAdjacentHTML("beforeend",
           `<div class="box warn" style="background:var(--a-soft);color:var(--text);margin:0 0 10px"><b style="color:var(--a-text)">📌 ${ev.brief.last_meeting ? "New since your last meeting on " + esc(ev.brief.last_meeting) : "What you wrote about them recently"} · found by code</b>`
           + ev.brief.new_since.filter((x, i, a) => a.findIndex(y => y.file === x.file) === i).map(x => `<div>${KIND_ICON[x.kind] || "📝"} ${esc(x.file)} <span class="muted">· ${esc(x.date)}</span> <button class="cite" data-n="${x.n}">${x.n}</button></div>`).join("") + `</div>`);
@@ -781,7 +903,8 @@ async function ask(question) {
     }
   };
   try {
-    const r = await fetch("/api/ask-stream", { method: "POST", headers: H, body: JSON.stringify({ question }) });
+    const r = await fetch("/api/ask-stream", { method: "POST", headers: H,
+      body: JSON.stringify({ question, images: images.map(im => ({ name: im.name, data: im.data })) }) });
     if (!r.ok) { const d = await r.json().catch(() => ({})); throw new Error(d.error || "Something went wrong."); }
     const reader = r.body.getReader(), dec = new TextDecoder();
     let buf = "";
@@ -815,7 +938,7 @@ async function loadSession() {
   return t;
 }
 
-$("askBtn").onclick = () => { const v = $("q").value; $("q").value = ""; ask(v); };
+$("askBtn").onclick = () => { const v = $("q").value; $("q").value = ""; ask(v); };  // a picture alone is fine too
 $("q").addEventListener("keydown", e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); $("askBtn").click(); } });
 $("prepBtn").onclick = () => nextMeeting && ask(nextMeeting.question);
 document.querySelectorAll(".quick button[data-q]").forEach(b => b.onclick = () => ask(b.dataset.q));

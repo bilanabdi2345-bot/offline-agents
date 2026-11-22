@@ -168,6 +168,7 @@ def clean_handwriting(text, known=()):
 
 
 SECTION_HELP = {
+    "PASTED": "PICTURE YOU PASTED (read this first)",
     "SINCE LAST TIME": "SINCE LAST TIME (new since the last meeting - the most important news, always include it)",
     "LAST TIME": "LAST TIME (notes from the last meeting)",
     "OPEN ACTIONS": "OPEN ACTIONS",
@@ -192,7 +193,8 @@ def build_prompt(question, picked, missing, day, sections=None):
                 current = sec
         age = (day - c.date).days if c.date else None
         when = f"{notes.nice_date(c.date)}" + (f", {age} day{'' if age == 1 else 's'} ago" if age is not None and age >= 0 else "")
-        flags = f" | WARNING: {', '.join(c.flags)}" if c.flags else ""
+        warn = [f for f in c.flags if f != "pasted by you"]
+        flags = f" | WARNING: {', '.join(warn)}" if warn else ""
         lines.append(f"[{n}] {c.rel} ({c.kind}, {when}){flags}")
         lines.append(clean_handwriting(c.text, known_words) if c.kind == "screenshot or photo" else c.text)
         lines.append("")
@@ -336,11 +338,25 @@ def confidence(picked, cited, day):
     return "medium", "Based on only one note."
 
 
-def prepare(question, compartments, model=None):
-    """Steps 1-3: read, search and explain. Fast (milliseconds), no AI needed."""
+def pasted_chunk(paste_id, name, text, day):
+    """A picture pasted into the chat, as a source. It lives in memory only."""
+    head = "[PICTURE YOU PASTED into the chat just now. Read this first.]\n"
+    body = head + ("[Text read from image]\n" + text if text.strip() else "[No text could be read from this picture]")
+    c = notes.Chunk("Pasted", None, f"Pasted/{name}", "screenshot or photo", body,
+                    1, max(1, text.count("\n") + 1), day, "when you pasted it")
+    c.flags.append("pasted by you")
+    c.paste_id = paste_id
+    return c
+
+
+def prepare(question, compartments, model=None, pasted=None):
+    """Steps 1-3: read, search and explain. Fast (milliseconds), no AI needed.
+    'pasted' is a list of pictures pasted into the chat (memory only); they are
+    always included, first."""
     started = time.time()
     day = today()
-    question = question.strip()
+    question = question.strip() or "What does this picture say?"
+    pasted = list(pasted or [])
 
     chunks, files_read, skipped = compartments.read_all(day)
 
@@ -352,6 +368,12 @@ def prepare(question, compartments, model=None):
         extra = related_words(question, model) if model else []
         hits, missing = search.search(question, chunks, today=day, report=info, extra=extra)
         picked = [c for _, c in hits]
+    if pasted:
+        picked = (pasted + [c for c in picked if c not in pasted])[:10]
+        if info.get("sections") is not None:
+            for c in pasted:
+                info["sections"][id(c)] = "PASTED"
+        missing = []  # the question may be about the picture rather than the notes
     on_names = ", ".join(c["name"] for c in compartments.on()) or "nothing"
     sources = []
     for n, c in enumerate(picked, start=1):

@@ -3,11 +3,14 @@
 It only listens on 127.0.0.1, so only this laptop can open it.
 """
 
+import base64
 import hmac
 import json
 import os
+import secrets
 import subprocess
 import sys
+import urllib.parse
 import urllib.error
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
@@ -26,10 +29,23 @@ class App:
         self.compartments = brain.Compartments(config["compartments"], config.get("kinds"))
         self.seal = trust.NotesSeal(self.compartments.paths())
         self.session_reads = []  # files read this session, in memory only
+        self.pastes = {}  # pictures pasted into the chat: memory only, wiped by Forget
 
     def forget(self):
         self.session_reads = []
+        self.pastes = {}
         ocr.forget()
+
+    def find_image(self, rel):
+        """The real path of a photo or screenshot, only if it is in a switched-on
+        folder and pictures are allowed. Anything else is refused."""
+        if "screenshot or photo" not in self.compartments.kinds:
+            return None
+        for comp in self.compartments.on():
+            for fname, path, r in brain.notes._candidates(comp["name"], comp.get("path"), comp.get("files")):
+                if r == rel and brain.notes.KINDS.get(os.path.splitext(fname)[1].lower()) == "screenshot or photo":
+                    return path
+        return None
 
 
 def make_handler(app, port):
@@ -46,7 +62,7 @@ def make_handler(app, port):
             self.send_header("Content-Type", kind)
             self.send_header("Content-Length", str(len(data)))
             self.send_header("Cache-Control", "no-store")
-            self.send_header("Content-Security-Policy", "default-src 'self' 'unsafe-inline'; connect-src 'self'")
+            self.send_header("Content-Security-Policy", "default-src 'self' 'unsafe-inline'; connect-src 'self'; img-src 'self' data: blob:")
             self.end_headers()
             self.wfile.write(data)
 
@@ -93,6 +109,8 @@ def make_handler(app, port):
             if self.path == "/api/themes":
                 found, problems = themes.load_all()
                 return self.send(200, {"themes": found, "problems": problems})
+            if self.path.startswith("/api/image"):
+                return self.image(self.path.startswith("/api/image-layout"))
             if self.path == "/api/meetings":
                 return self.send(200, brain.meetings(app.compartments))
             if self.path == "/api/trust":
@@ -183,14 +201,59 @@ def make_handler(app, port):
 
             self.send(404, {"error": "not found"})
 
+        def image(self, layout):
+            """Send a photo (or where its words are) to the app window."""
+            q = urllib.parse.parse_qs(urllib.parse.urlparse(self.path).query)
+            if "paste" in q:
+                p = app.pastes.get(q["paste"][0])
+                if not p:
+                    return self.send(404, {"error": "That picture has been forgotten."})
+                if layout:
+                    return self.send(200, p["layout"])
+                return self.send(200, p["bytes"], p["mime"])
+            path = app.find_image(q.get("f", [""])[0])
+            if not path:
+                return self.send(404, {"error": "That picture isn't in a switched-on folder."})
+            if layout:
+                found = ocr.analyse([path]).get(path) or {"text": "", "words": [], "width": 0, "height": 0}
+                return self.send(200, found)
+            ext = os.path.splitext(path)[1].lower()
+            mime = {".png": "image/png", ".jpg": "image/jpeg", ".jpeg": "image/jpeg", ".heic": "image/heic"}.get(ext, "application/octet-stream")
+            with open(path, "rb") as f:
+                return self.send(200, f.read(), mime)
+
+        def read_pastes(self, images):
+            """Pictures pasted into the chat: read in memory, never written to disk."""
+            chunks = []
+            for i, img in enumerate((images or [])[:3], start=1):
+                raw = img.get("data", "") if isinstance(img, dict) else ""
+                head, _, b64 = raw.partition(",")
+                if not head.startswith("data:image/") or not b64:
+                    continue
+                try:
+                    data = base64.b64decode(b64, validate=True)
+                except Exception:
+                    continue
+                if len(data) > 12 * 1024 * 1024:
+                    continue
+                mime = head[5:].split(";")[0]
+                layout = ocr.analyse_bytes(data)
+                pid = secrets.token_hex(8)
+                name = (img.get("name") or f"picture {i}").replace("/", "-")[:60]
+                app.pastes[pid] = {"bytes": data, "mime": mime, "layout": layout, "name": name}
+                chunks.append(brain.pasted_chunk(pid, name, layout.get("text", ""), brain.today()))
+            return chunks
+
         def ask_stream(self, data):
             """Send the answer in pieces: sources first (instant), then the
             AI's words as they arrive, then the confidence and explanation."""
             q = (data.get("question") or "").strip()
-            if not q:
+            pasted = self.read_pastes(data.get("images"))
+            if not q and not pasted:
                 return self.send(400, {"error": "Type a question first."})
-            ctx = brain.prepare(q, app.compartments, app.model)
-            app.session_reads.append({"question": q, "files": ctx["files_read"]})
+            ctx = brain.prepare(q, app.compartments, app.model, pasted)
+            app.session_reads.append({"question": ctx["question"],
+                                      "files": ctx["files_read"] + [c.rel for c in pasted]})
             self.send_response(200)
             self.send_header("Content-Type", "application/x-ndjson")
             self.send_header("Cache-Control", "no-store")

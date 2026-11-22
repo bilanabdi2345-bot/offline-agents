@@ -4,6 +4,7 @@ Run:  python3 -B -m unittest discover tests
 """
 
 import datetime as dt
+import base64
 import json
 import os
 import socket
@@ -12,6 +13,7 @@ import sys
 import time
 import unittest
 import urllib.error
+import urllib.parse
 import urllib.request
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -329,6 +331,28 @@ class Themes(unittest.TestCase):
         self.assertNotIn("<", clean["name"])
 
 
+class Pictures(unittest.TestCase):
+    def test_tesseract_word_boxes(self):
+        from secondbrain import ocr
+        tsv = ("level\tpage_num\tblock_num\tpar_num\tline_num\tword_num\tleft\ttop\twidth\theight\tconf\ttext\n"
+               "1\t1\t0\t0\t0\t0\t0\t0\t1000\t500\t-1\t\n"
+               "5\t1\t1\t1\t1\t1\t100\t50\t200\t40\t90\tPilot\n"
+               "5\t1\t1\t1\t1\t2\t320\t50\t100\t40\t90\tmoved\n"
+               "5\t1\t1\t1\t2\t1\t100\t150\t150\t40\t90\tAsk\n")
+        d = ocr._from_tesseract_tsv(tsv)
+        self.assertEqual(d["text"], "Pilot moved\nAsk")
+        self.assertEqual((d["width"], d["height"]), (1000, 500))
+        self.assertAlmostEqual(d["words"][0]["x"], 0.1)
+        self.assertAlmostEqual(d["words"][0]["y"], 0.1)
+
+    def test_pasted_picture_goes_first(self):
+        c = brain.pasted_chunk("abc", "note.png", "Pilot now 26 Jan", DAY)
+        ctx = brain.prepare("pilot", comps(), pasted=[c])
+        self.assertEqual(ctx["sources"][0]["file"], "Pasted/note.png")
+        self.assertEqual(ctx["sources"][0]["paste_id"], "abc")
+        self.assertIn("PICTURE YOU PASTED", ctx["prompt"])
+
+
 class Server(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
@@ -405,6 +429,62 @@ class Server(unittest.TestCase):
             events = [json.loads(line) for line in r if line.strip()]
         self.assertEqual([e["type"] for e in events], ["start", "done"])
         self.assertIn("couldn't find", events[-1]["answer"])
+
+    def stream(self, body):
+        req = urllib.request.Request(
+            self.url + "/api/ask-stream", data=json.dumps(body).encode(),
+            headers={"Content-Type": "application/json", "X-Second-Brain": "test-key"})
+        with urllib.request.urlopen(req, timeout=15) as r:
+            return [json.loads(line) for line in r if line.strip()]
+
+    def raw(self, path, token="test-key"):
+        h = {"X-Second-Brain": token} if token else {}
+        try:
+            with urllib.request.urlopen(urllib.request.Request(self.url + path, headers=h), timeout=10) as r:
+                return r.status, r.headers.get("Content-Type"), r.read()
+        except urllib.error.HTTPError as e:
+            return e.code, e.headers.get("Content-Type"), e.read()
+
+    def test_pasted_picture_is_read_and_viewable(self):
+        with open(_photo, "rb") as f:
+            png = base64.b64encode(f.read()).decode()
+        events = self.stream({"question": "what does my note say about the pilot?",
+                              "images": [{"name": "whiteboard.jpg", "data": "data:image/jpeg;base64," + png}]})
+        first = events[0]["sources"][0]
+        self.assertEqual(first["file"], "Pasted/whiteboard.jpg")
+        self.assertIn("26 Jan", first["text"])
+        self.assertTrue(first["paste_id"])
+        code, kind, data = self.raw(f"/api/image?paste={first['paste_id']}")
+        self.assertEqual((code, kind), (200, "image/jpeg"))
+        with open(_photo, "rb") as f:
+            self.assertEqual(data, f.read())
+        code, _, data = self.raw(f"/api/image-layout?paste={first['paste_id']}")
+        self.assertIn("26 Jan", json.loads(data)["text"])
+        self.assertEqual(self.raw(f"/api/image?paste={first['paste_id']}", token=None)[0], 403)
+        self.call("/api/forget", {})
+        self.assertEqual(self.raw(f"/api/image?paste={first['paste_id']}")[0], 404)
+
+    def test_picture_alone_and_bad_pictures(self):
+        with open(_photo, "rb") as f:
+            png = base64.b64encode(f.read()).decode()
+        events = self.stream({"question": "", "images": [{"name": "x.jpg", "data": "data:image/jpeg;base64," + png}]})
+        self.assertEqual(events[0]["question"], "What does this picture say?")
+        events = self.stream({"question": "pilot", "images": [{"data": "data:text/html;base64,PGI+"}]})
+        self.assertFalse(any(s["file"].startswith("Pasted/") for s in events[0]["sources"]))
+
+    def test_photos_only_served_from_switched_on_folders(self):
+        self.call("/api/compartment", {"action": "add", "name": "Photos", "path": PHOTOS})
+        rel = "Photos/" + os.path.basename(_photo)
+        q = "/api/image?f=" + urllib.parse.quote(rel)
+        self.assertEqual(self.raw(q)[0], 200)
+        self.assertEqual(self.raw(q, token=None)[0], 403)
+        layout = json.loads(self.raw("/api/image-layout?f=" + urllib.parse.quote(rel))[2])
+        self.assertIn("26 Jan", layout["text"])
+        self.assertEqual(self.raw("/api/image?f=" + urllib.parse.quote("Projects/action-items.csv"))[0], 404)
+        self.assertEqual(self.raw("/api/image?f=" + urllib.parse.quote("../../etc/passwd"))[0], 404)
+        self.call("/api/compartment", {"action": "toggle", "name": "Photos", "enabled": False})
+        self.assertEqual(self.raw(q)[0], 404)
+        self.call("/api/compartment", {"action": "remove", "name": "Photos"})
 
     def test_meetings_and_kinds(self):
         m = self.call("/api/meetings")

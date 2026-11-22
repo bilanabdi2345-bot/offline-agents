@@ -49,6 +49,13 @@ intern check-in: it suggests technical questions, to see what the training taugh
 January. But at the demo on 10 December it moved to 26 January. It tells me the
 newest answer, and warns me the draft is out of date. That's an email I'd have sent wrong."
 
+**Optional extra (15 seconds):** take a photo of a handwritten note on your phone,
+AirDrop it, then drag it into the chat and ask about it. Click the 🔍 button.
+
+**Say:** "If my handwriting is too messy for the AI, I can see the original. The
+words that match my question light up, and I can copy text straight off the photo.
+The picture was only ever in memory. It was never saved."
+
 ## 4. Honest, and forgiving (25 seconds) · Trust and explainability
 **Click:** "Something not in my notes". "Nothing about next summer's budget, so it says so."
 

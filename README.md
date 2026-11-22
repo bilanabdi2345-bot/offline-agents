@@ -8,8 +8,9 @@ Built for the Pfizer AI Studio and Newpage hackathon, University of Bristol, Nov
 
 ## Five pages
 
-- **Ask**: a chat about your notes, with quick asks down the side and your next meeting ready to prepare for.
+- **Ask**: a chat about your notes, with quick asks down the side and your next meeting ready to prepare for. Paste, drop or attach a photo or screenshot (📎) and it's read on the spot, in memory only.
 - **Meetings**: past and upcoming meetings from your calendar, each linked to the notes written that day. **Prepare me** for what's coming, **Recap** for what's done.
+- **Photo viewer**: any answer that used a photo has a 🔍 button. It shows the original picture, so you can read your own handwriting yourself, and every word the Mac recognised can be selected and copied straight off the photo, like Google Lens. Words that match your question are highlighted in yellow.
 - **Folders & access**: switch folders on or off, and choose which kinds of things may be read: notes, action lists, calendars, saved links, and screenshots & photos.
 - **Check-up**: one button tests every promise. Add a monthly reminder to your calendar.
 - **Appearance & themes**: a theme gallery (Paper, Midnight, Forest, Sunset, High contrast, Terminal), a theme maker, theme import and download, text size, and an easy-read mode with extra spacing that helps with dyslexia.
@@ -135,7 +136,7 @@ The app treats **5 January 2027** as "today" (`demo_today` in `config.json`).
 python3 -B -m unittest discover tests
 ```
 
-42 tests. They use a fake AI model, so they run anywhere.
+47 tests. They use a fake AI model, so they run anywhere.
 
 ## Project layout
 

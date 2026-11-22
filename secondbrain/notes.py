@@ -78,6 +78,7 @@ class Chunk:
             "age_days": age,
             "text": self.text,
             "flags": self.flags,
+            "paste_id": getattr(self, "paste_id", None),
         }
 
 
