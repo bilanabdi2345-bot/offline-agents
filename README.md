@@ -86,6 +86,8 @@ It reads `.md`, `.txt`, `.csv` action lists, `.ics` calendar files, saved links 
 ## Sample notes
 
 `sample-notes/` holds made-up notes for a made-up manager, written for this demo.
+They include a real handwritten notebook page (photographed), a whiteboard photo
+and a screenshot, so the demo shows paper notes being read on the laptop.
 They are messy on purpose: a launch date that was changed later, an unfinished
 draft that still has the old date, overdue actions, scraps with no dates, and a
 private folder.
