@@ -300,10 +300,13 @@ def make_handler(app, port):
                         if models.looks_like_thinking(held):
                             stream.close()  # stop the model; it is unloaded straight away
                             ctx["code_answer"] = brain.quote_answer(ctx)
+                            reason = (f"{app.model} started thinking out loud instead of answering, so I stopped it. "
+                                      "Try llama3.2:3b with the AI button at the top.")
                             done = brain.code_done(ctx, f"{app.model} started thinking out loud instead of answering, "
                                                         "so here are the exact lines from your notes. For a written "
                                                         "answer, choose another model with the AI button at the top.")
-                            return emit({"type": "done", **done, "sources": ctx["sources"], "no_ai": True})
+                            return emit({"type": "done", **done, "sources": ctx["sources"], "no_ai": True,
+                                         "no_ai_reason": reason})
                         piece, held = held, ""
                     text += piece
                     emit({"type": "token", "text": piece})
@@ -311,17 +314,26 @@ def make_handler(app, port):
                     if models.looks_like_thinking(held):
                         ctx["code_answer"] = brain.quote_answer(ctx)
                         done = brain.code_done(ctx, "The AI didn't give a direct answer, so here are the exact lines from your notes.")
-                        return emit({"type": "done", **done, "sources": ctx["sources"], "no_ai": True})
+                        return emit({"type": "done", **done, "sources": ctx["sources"], "no_ai": True,
+                                     "no_ai_reason": f"{app.model} didn't give a direct answer. Try llama3.2:3b with the AI button at the top."})
                     text += held
                     emit({"type": "token", "text": held})
                 done = brain.finish(ctx, text)
                 emit({"type": "done", **done, "sources": ctx["sources"]})
-            except (urllib.error.URLError, ConnectionError, TimeoutError):
-                # No AI? Still useful: show the best matching lines, found and quoted by code.
+            except (urllib.error.URLError, ConnectionError, TimeoutError) as e:
+                # No AI answer? Still useful: show the best matching lines, found and quoted by code.
+                if isinstance(e, urllib.error.HTTPError) and e.code == 404:
+                    why = (f"Ollama doesn't have the model {app.model}. Choose another with the AI button at the top, "
+                           f"or install it in Terminal: ollama pull {app.model}")
+                elif isinstance(e, urllib.error.HTTPError):
+                    why = f"The AI model {app.model} couldn't answer (error {e.code}). Try another with the AI button at the top."
+                elif isinstance(e, TimeoutError) or "timed out" in str(e):
+                    why = f"The AI model {app.model} took too long. A smaller model may be faster on this Mac."
+                else:
+                    why = "The Ollama app isn't open. Open Ollama (the llama icon in the menu bar) for written answers."
                 ctx["code_answer"] = brain.quote_answer(ctx)
-                done = brain.code_done(ctx, "The AI isn't running (open Ollama for a written answer), so these lines "
-                                            "were found by code and quoted exactly from your notes.")
-                emit({"type": "done", **done, "sources": ctx["sources"], "no_ai": True})
+                done = brain.code_done(ctx, why + " Meanwhile, these lines were found by code and quoted exactly from your notes.")
+                emit({"type": "done", **done, "sources": ctx["sources"], "no_ai": True, "no_ai_reason": why})
             except (BrokenPipeError, ConnectionResetError):
                 pass  # the window was closed mid-answer
 

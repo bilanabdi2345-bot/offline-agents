@@ -1034,7 +1034,7 @@ async function ask(question, opts = {}) {
       for (const c of (ctx && ctx.changes) || []) {
         addAlert("🔁", esc(c.short));
       }
-      if (ev.no_ai) addAlert("ℹ️", "The AI isn't running, so these are exact quotes from your notes.");
+      if (ev.no_ai) addAlert("ℹ️", `${esc(ev.no_ai_reason || "The AI couldn't answer.")} So instead, here are the exact lines from your notes.`);
       card.querySelectorAll(".seemore").forEach(a => a.onclick = e => { e.preventDefault(); openMore(true); });
       q(".review").hidden = false; openMore(false);
       q(".speak").hidden = false; wireCites();
