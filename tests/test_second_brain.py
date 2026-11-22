@@ -189,6 +189,15 @@ class Answering(unittest.TestCase):
             os.environ["FAKE_OCR_TEXT"] = "Quick Note: Q4 marketing budget finance said NO"
             ocr.forget()
 
+    def test_prepare_me_is_organised_by_code(self):
+        q = brain.meeting_question(comps())["question"]
+        ctx = brain.prepare(q, comps(), "test-model")
+        p = ctx["prompt"]
+        self.assertLess(p.index("SINCE LAST TIME"), p.index("LAST TIME (notes"))
+        last = p.index("LAST TIME (notes")
+        self.assertLess(last, p.index("2026-11-02 1-1 Priya.md"))
+        self.assertLess(p.index("2026-11-02 1-1 Priya.md"), p.index("=== OPEN ACTIONS"))
+
     def test_prompt_example_has_no_real_facts(self):
         # The model once copied facts from the example; the example must be placeholders only.
         self.assertNotIn("December", brain.SYSTEM)

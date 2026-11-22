@@ -627,6 +627,10 @@ function renderAnswerText(text) {
     const line = raw.trim();
     if (!line) continue;
     const plain = line.replace(/^[-*•#\d.\s\[]+(?=[A-Za-z])/, "").replace(/\*\*/g, "").replace(/^(Watch out|Not in your notes):?\]\s*/i, "$1: ");
+    if (/^(since last time|last time|open actions|follow up|what has changed|what to follow up on)[^:]{0,20}:\s*$/i.test(plain)) {
+      section = "main"; if (inList) { html += "</ul>"; inList = false; }
+      html += `<p style="margin-top:12px"><b>${esc(plain)}</b></p>`; continue;
+    }
     if (/^watch out:?/i.test(plain)) { section = "warn"; const r = plain.replace(/^watch out:?\s*/i, ""); if (r) warn.push(r); continue; }
     if (/^not in your notes:?/i.test(plain)) { section = "miss"; const r = plain.replace(/^not in your notes:?\s*/i, ""); if (r) miss.push(r); continue; }
     if (section === "warn") { warn.push(plain); continue; }
@@ -711,7 +715,7 @@ async function ask(question) {
       const also = ctx && ctx.also_looked_for && ctx.also_looked_for.length ? `<div class="why"><b>I also looked for:</b> ${esc(ctx.also_looked_for.join(", "))}</div>` : "";
       q(".whybox").innerHTML = also + `<div class="why"><b>Why:</b> ${esc(ev.confidence_reason)}</div><div class="why"><b>Where this came from:</b> ${esc(ev.explanation)}</div>`;
       if (ev.sources) showSources(ev.sources, false);
-      q(".foot").textContent = `Answered in ${ev.seconds}s · nothing saved`;
+      q(".foot").textContent = `Answered in ${ev.seconds}s${ev.timing ? " (" + ev.timing + ")" : ""} · nothing saved`;
       q(".speak").hidden = false; wireCites();
     } else if (ev.type === "error") {
       q(".body").innerHTML = `<div class="error">${esc(ev.error)}</div>`;

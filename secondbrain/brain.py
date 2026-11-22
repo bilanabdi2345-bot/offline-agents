@@ -102,9 +102,23 @@ Watch out: <a real warning from the sources> [<source number>]
 Not in your notes: <the part of the question the sources don't answer>"""
 
 
-def build_prompt(question, picked, missing, day):
+SECTION_HELP = {
+    "SINCE LAST TIME": "SINCE LAST TIME (new since the last meeting - the most important news, always include it)",
+    "LAST TIME": "LAST TIME (notes from the last meeting)",
+    "OPEN ACTIONS": "OPEN ACTIONS",
+    "MORE": "OTHER RELATED NOTES",
+}
+
+
+def build_prompt(question, picked, missing, day, sections=None):
     lines = [f"Today is {notes.nice_date(day)} ({day.strftime('%A')}).", "", "SOURCES:"]
+    current = None
     for n, c in enumerate(picked, start=1):
+        if sections:
+            sec = sections.get(id(c), "MORE")
+            if sec != current:
+                lines += ["", f"=== {SECTION_HELP[sec]} ==="]
+                current = sec
         age = (day - c.date).days if c.date else None
         when = f"{notes.nice_date(c.date)}" + (f", {age} days ago" if age is not None and age >= 0 else "")
         flags = f" | WARNING: {', '.join(c.flags)}" if c.flags else ""
@@ -117,8 +131,11 @@ def build_prompt(question, picked, missing, day):
         "",
         f"QUESTION: {question}",
         "",
-        "Answer with:",
-        "1. The answer, as short bullet points with source numbers.",
+        *([
+            "Answer with these headings, in this order, each followed by 1-3 short bullet points with source numbers:",
+            "Since last time:", "Last time:", "Open actions:", "Follow up:",
+            "Then:",
+        ] if sections else ["Answer with:", "1. The answer, as short bullet points with source numbers."]),
         "2. A line starting 'Watch out:' for anything out of date, conflicting, unfinished, overdue or private. Skip it if there is nothing.",
         "3. A line starting 'Not in your notes:' for any part you could not find. Skip it if you found everything.",
     ]
@@ -275,40 +292,62 @@ def prepare(question, compartments, model=None):
         "_day": day,
         "_started": started,
         "_on": on_names,
-        "prompt": build_prompt(question, picked, missing, day) if picked else None,
+        "prompt": build_prompt(question, picked, missing, day, info.get("sections")) if picked else None,
+        "_read_seconds": round(time.time() - started, 1),
     }
 
 
 TITLE_SKIP = {"meeting", "call", "catch", "sync", "team", "group", "with", "weekly", "monthly", "presenting"}
 
 
-def meeting_sources(title, question, chunks, day, info, limit=10):
-    """For 'Prepare me': start with every recent note, photo or action that
-    mentions the people or topic in the meeting title (newest first), then
-    fill up with the best search matches. Calendar entries are left out:
-    they only repeat the meeting itself."""
+def meeting_sources(title, question, chunks, day, info, limit=8):
+    """For 'Prepare me', the code (not the AI) organises the brief:
+      SINCE LAST TIME - notes, photos and scraps about these people written
+                        after the last meeting (the news the manager needs most)
+      LAST TIME       - the note from the last meeting
+      OPEN ACTIONS    - open actions that mention them
+    Calendar entries are left out: they only repeat the meeting itself."""
     words = [w for w in re.findall(r"[A-Za-z]{3,}", title)
              if w.lower() not in search.STOP and w.lower() not in TITLE_SKIP]
-    useful = [c for c in chunks if c.kind != "calendar"]
-    focus = []
-    for c in sorted(useful, key=lambda c: c.date or day, reverse=True):
-        if c.date and (day - c.date).days > 60:
-            continue
-        if any(w.lower() in c.text.lower() for w in words):
-            focus.append(c)
-    picked, per = [], {}
-    for c in focus:
-        cap = 1 if c.kind in ("note", "screenshot or photo") else 3
-        if per.get(c.rel, 0) < cap and len(picked) < 7:
+    mentions = lambda c: any(w.lower() in c.text.lower() or w.lower() in c.rel.lower() for w in words)
+
+    past = [c for c in chunks if c.kind == "calendar" and c.date and c.date < day
+            and title.lower() in c.text.lower()]
+    last_date = max((c.date for c in past), default=None)
+
+    sections = {}
+    picked = []
+
+    def take(c, section):
+        if c not in picked and len(picked) < limit:
             picked.append(c)
-            per[c.rel] = per.get(c.rel, 0) + 1
-    hits, missing = search.search(question, useful, today=day, report=info)
-    for _, c in hits:
-        if len(picked) >= limit:
-            break
-        if c not in picked:
-            picked.append(c)
-    return picked, [m for m in missing if m.lower() not in ("prepare",)], []
+            sections[id(c)] = section
+
+    notes_about = sorted([c for c in chunks if c.kind in ("note", "screenshot or photo") and mentions(c)],
+                         key=lambda c: c.date or day, reverse=True)
+    # 1. Since last time (newest first)
+    for c in notes_about:
+        if c.date and c.date <= day and (last_date is None or c.date > last_date) and (day - c.date).days <= 45:
+            if sum(1 for x in picked if sections[id(x)] == "SINCE LAST TIME") < 4:
+                take(c, "SINCE LAST TIME")
+    # 2. Last time
+    if last_date:
+        for c in notes_about:
+            if c.date == last_date:
+                take(c, "LAST TIME")
+    # 3. Open actions that mention them
+    for c in chunks:
+        if c.kind == "action list" and "status: open" in c.text.lower() and mentions(c):
+            if sum(1 for x in picked if sections[id(x)] == "OPEN ACTIONS") < 3:
+                take(c, "OPEN ACTIONS")
+    # 4. If there is still room, the best search matches
+    if len(picked) < 4:
+        hits, _ = search.search(question, [c for c in chunks if c.kind != "calendar"], today=day, report=info)
+        for _, c in hits:
+            take(c, "MORE")
+    info["sections"] = sections
+    info["last_date"] = last_date
+    return picked, [], []
 
 
 def _explain(ctx, used_files):
@@ -344,7 +383,9 @@ def finish(ctx, text):
         s["used"] = s["n"] in cited
     level, reason = confidence(ctx["_picked"], cited, ctx["_day"])
     used_files = sorted({s["file"] for s in ctx["sources"] if s["used"]})
+    total = round(time.time() - ctx["_started"], 1)
     return {
+        "timing": f"reading your notes {ctx['_read_seconds']}s, AI writing {round(total - ctx['_read_seconds'], 1)}s",
         "answer": text,
         "confidence": level,
         "confidence_reason": reason,
