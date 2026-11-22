@@ -165,7 +165,7 @@ def make_handler(app, port):
             q = (data.get("question") or "").strip()
             if not q:
                 return self.send(400, {"error": "Type a question first."})
-            ctx = brain.prepare(q, app.compartments)
+            ctx = brain.prepare(q, app.compartments, app.model)
             app.session_reads.append({"question": q, "files": ctx["files_read"]})
             self.send_response(200)
             self.send_header("Content-Type", "application/x-ndjson")

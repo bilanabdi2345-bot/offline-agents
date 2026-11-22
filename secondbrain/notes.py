@@ -318,6 +318,10 @@ def add_flags(chunk, today):
             chunk.flags.append("overdue")
     if chunk.date and (today - chunk.date).days > 45 and chunk.kind == "note":
         chunk.flags.append("older than 6 weeks")
+    if chunk.kind in ("note", "screenshot or photo") and re.search(
+        r"ignore (all |any |your |previous )*(rules|instructions)|system message|"
+        r"(send|email|upload|post) (it|this|everything|all)[^.]{0,40}(to|at) |https?://", t):
+        chunk.flags.append("looks like instructions")
     if "confidential" in t or "private" in t:
         chunk.flags.append("marked private")
     return chunk

@@ -5,6 +5,7 @@ No search index is built or saved, because an index would be a copy.
 """
 
 import datetime as dt
+import difflib
 import math
 import re
 from collections import Counter
@@ -24,13 +25,25 @@ STOP = set(
     monday tuesday wednesday thursday friday saturday sunday today tomorrow yesterday
     january february march april june july august september october november december
     jan feb mar apr jun jul aug sep sept oct nov dec week weeks month months day days
-    past recent recently lately upcoming coming made make happening""".split()
+    past recent recently lately upcoming coming made make happening
+    wrote write written writing show tell read look see think thinks thinking""".split()
 )
 # Words like "decision" are in STOP for matching, but we still use them to
 # give a small boost to pieces that record decisions.
 BOOSTS = {
     "decision": ("decision", "decided", "agreed", "moved"),
     "action": ("action", "todo", "follow up", "status: open"),
+}
+
+
+# Words that describe a kind of note, so "my handwritten note" finds the
+# notebook photo and "my calendar" finds calendar entries.
+KIND_WORDS = {
+    "screenshot or photo": "photo image picture screenshot handwritten handwriting notebook paper whiteboard scan",
+    "calendar": "calendar meeting event diary",
+    "action list": "action todo task list",
+    "saved link": "link bookmark website",
+    "note": "",
 }
 
 
@@ -44,6 +57,31 @@ def stem(word):
 def tokens(text):
     words = re.findall(r"[a-z0-9]+(?::[0-9]+)?", text.lower())
     return [stem(w) for w in words if w not in STOP and len(w) > 1]
+
+
+def fix_spelling(question, vocab):
+    """Forgive typos: match each unknown word to the closest word that really
+    appears in the notes (or to a common word we ignore). Returns
+    (corrected question, list of (typed, understood))."""
+    fixes = []
+    stops = sorted(STOP)
+    vocab_list = sorted(vocab)
+
+    def fix(m):
+        word = m.group(0)
+        low = word.lower()
+        if len(low) < 4 or low.isdigit() or low in STOP or stem(low) in vocab:
+            return word
+        near_stop = difflib.get_close_matches(low, stops, n=1, cutoff=0.8)
+        if near_stop:
+            return near_stop[0]  # e.g. "worte" -> "wrote", which we then ignore
+        near = difflib.get_close_matches(stem(low), vocab_list, n=1, cutoff=0.78)
+        if near:
+            fixes.append((word, near[0]))
+            return near[0]
+        return word
+
+    return re.sub(r"[A-Za-z]+", fix, question), fixes
 
 
 def keywords(question):
@@ -97,9 +135,23 @@ def _spread(scored, top_k, per_file):
     return picked[:top_k]
 
 
-def search(question, chunks, top_k=10, k1=1.4, b=0.75, per_file=2, today=None):
-    """Return (best pieces with scores, keywords not found anywhere)."""
+def doc_tokens(c):
+    return tokens(c.text + " " + c.rel + " " + " ".join(c.flags) + " " + KIND_WORDS.get(c.kind, ""))
+
+
+def search(question, chunks, top_k=10, k1=1.4, b=0.75, per_file=2, today=None, report=None, extra=None):
+    """Return (best pieces with scores, keywords not found anywhere).
+    If 'report' is a dict, spelling fixes are added to it."""
+    vocab = set()
+    docs_all = [doc_tokens(c) for c in chunks]
+    for d in docs_all:
+        vocab.update(d)
+    question, fixes = fix_spelling(question, vocab)
+    if report is not None:
+        report["spelling"] = fixes
     q = tokens(question)
+    # Related words (from the local AI) count for half as much as the user's own words.
+    q_extra = [w for w in tokens(" ".join(extra or [])) if w not in q]
     window = time_window(question, today)
     ql = question.lower()
     wants = [k for k, words in BOOSTS.items() if k in ql or any(w in ql for w in words)]
@@ -119,7 +171,7 @@ def search(question, chunks, top_k=10, k1=1.4, b=0.75, per_file=2, today=None):
     if not q or not chunks:
         return [], keywords(question)
 
-    docs = [tokens(c.text + " " + c.rel + " " + " ".join(c.flags)) for c in chunks]
+    docs = [doc_tokens(c) for c in chunks]
     n = len(docs)
     avg = sum(len(d) for d in docs) / n or 1
     df = Counter()
@@ -130,11 +182,11 @@ def search(question, chunks, top_k=10, k1=1.4, b=0.75, per_file=2, today=None):
     for chunk, d in zip(chunks, docs):
         tf = Counter(d)
         score = 0.0
-        for term in set(q):
+        for term, weight in [(x, 1.0) for x in set(q)] + [(x, 0.5) for x in set(q_extra)]:
             if term not in tf:
                 continue
             idf = math.log(1 + (n - df[term] + 0.5) / (df[term] + 0.5))
-            score += idf * tf[term] * (k1 + 1) / (tf[term] + k1 * (1 - b + b * len(d) / avg))
+            score += weight * idf * tf[term] * (k1 + 1) / (tf[term] + k1 * (1 - b + b * len(d) / avg))
         if score > 0:
             text = chunk.text.lower()
             for k in wants:
@@ -142,8 +194,8 @@ def search(question, chunks, top_k=10, k1=1.4, b=0.75, per_file=2, today=None):
                     score *= 1.3
             # Newer notes matter more: things change, decisions get reversed.
             if today and chunk.date:
-                age = max(0, (today - chunk.date).days)
-                score *= 1 + 0.6 * math.exp(-age / 30)
+                age = (today - chunk.date).days
+                score *= 1.2 if age < 0 else 1 + 0.6 * math.exp(-age / 30)  # future events: small boost only
             scored.append((score, chunk))
 
     scored.sort(key=lambda x: (-x[0], x[1].rel, x[1].line_start))

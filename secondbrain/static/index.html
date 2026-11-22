@@ -626,7 +626,7 @@ function renderAnswerText(text) {
   for (const raw of text.split("\n")) {
     const line = raw.trim();
     if (!line) continue;
-    const plain = line.replace(/^[-*•#\d.\s]+(?=[A-Za-z])/, "").replace(/\*\*/g, "");
+    const plain = line.replace(/^[-*•#\d.\s\[]+(?=[A-Za-z])/, "").replace(/\*\*/g, "").replace(/^(Watch out|Not in your notes):?\]\s*/i, "$1: ");
     if (/^watch out:?/i.test(plain)) { section = "warn"; const r = plain.replace(/^watch out:?\s*/i, ""); if (r) warn.push(r); continue; }
     if (/^not in your notes:?/i.test(plain)) { section = "miss"; const r = plain.replace(/^not in your notes:?\s*/i, ""); if (r) miss.push(r); continue; }
     if (section === "warn") { warn.push(plain); continue; }
@@ -700,14 +700,16 @@ async function ask(question) {
       if (ev.found) {
         q(".body").innerHTML = `<span class="thinking"><span class="spin"></span>Found ${ev.sources.length} matching notes in ${secs}s. Writing…</span>`;
         showSources(ev.sources, false);
-        if (ev.missing.length) q(".codebox").innerHTML = `<div class="box miss"><b>Checked by code</b>None of your notes mention: ${esc(ev.missing.join(", "))}. Anything about that is only loosely related.</div>`;
+        if (ev.spelling && ev.spelling.length) q(".codebox").insertAdjacentHTML("beforeend", `<div class="box miss"><b>Spelling</b>I read ${ev.spelling.map(s => `“${esc(s.typed)}” as “${esc(s.read_as)}”`).join(", ")}.</div>`);
+        if (ev.missing.length) q(".codebox").innerHTML += `<div class="box miss"><b>Checked by code</b>None of your notes mention: ${esc(ev.missing.join(", "))}. Anything about that is only loosely related.</div>`;
       }
     } else if (ev.type === "token") {
       text += ev.text; q(".body").innerHTML = renderAnswerText(text); wireCites();
     } else if (ev.type === "done") {
       q(".conf").innerHTML = confidencePill(ev.confidence);
       q(".body").innerHTML = ctx && ctx.found ? renderAnswerText(ev.answer) : `<p>${esc(ev.answer)}</p>`;
-      q(".whybox").innerHTML = `<div class="why"><b>Why:</b> ${esc(ev.confidence_reason)}</div><div class="why"><b>Where this came from:</b> ${esc(ev.explanation)}</div>`;
+      const also = ctx && ctx.also_looked_for && ctx.also_looked_for.length ? `<div class="why"><b>I also looked for:</b> ${esc(ctx.also_looked_for.join(", "))}</div>` : "";
+      q(".whybox").innerHTML = also + `<div class="why"><b>Why:</b> ${esc(ev.confidence_reason)}</div><div class="why"><b>Where this came from:</b> ${esc(ev.explanation)}</div>`;
       if (ev.sources) showSources(ev.sources, false);
       q(".foot").textContent = `Answered in ${ev.seconds}s · nothing saved`;
       q(".speak").hidden = false; wireCites();
