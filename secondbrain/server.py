@@ -288,10 +288,32 @@ def make_handler(app, port):
                 if ctx.get("code_answer"):
                     done = brain.code_done(ctx, "Found by code and quoted from your notes. No AI was used, so nothing was made up.")
                     return emit({"type": "done", **done, "sources": ctx["sources"]})
-                text = ""
-                for piece in brain.ask_model_stream(ctx["prompt"], app.model, app.keep_alive):
+                text, held, checked = "", "", False
+                stream = brain.ask_model_stream(ctx["prompt"], app.model, app.keep_alive)
+                for piece in stream:
+                    if not checked:
+                        # Hold the first words back: is the AI answering, or thinking out loud?
+                        held += piece
+                        if len(held) < 120:
+                            continue
+                        checked = True
+                        if models.looks_like_thinking(held):
+                            stream.close()  # stop the model; it is unloaded straight away
+                            ctx["code_answer"] = brain.quote_answer(ctx)
+                            done = brain.code_done(ctx, f"{app.model} started thinking out loud instead of answering, "
+                                                        "so here are the exact lines from your notes. For a written "
+                                                        "answer, choose another model with the AI button at the top.")
+                            return emit({"type": "done", **done, "sources": ctx["sources"], "no_ai": True})
+                        piece, held = held, ""
                     text += piece
                     emit({"type": "token", "text": piece})
+                if held and not checked:
+                    if models.looks_like_thinking(held):
+                        ctx["code_answer"] = brain.quote_answer(ctx)
+                        done = brain.code_done(ctx, "The AI didn't give a direct answer, so here are the exact lines from your notes.")
+                        return emit({"type": "done", **done, "sources": ctx["sources"], "no_ai": True})
+                    text += held
+                    emit({"type": "token", "text": held})
                 done = brain.finish(ctx, text)
                 emit({"type": "done", **done, "sources": ctx["sources"]})
             except (urllib.error.URLError, ConnectionError, TimeoutError):

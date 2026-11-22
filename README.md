@@ -157,7 +157,7 @@ The app treats **5 January 2027** as "today" (`demo_today` in `config.json`).
 python3 -B -m unittest discover tests
 ```
 
-72 tests. They use a fake AI model, so they run anywhere.
+75 tests. They use a fake AI model, so they run anywhere.
 
 ## Project layout
 

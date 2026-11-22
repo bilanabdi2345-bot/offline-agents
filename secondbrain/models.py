@@ -106,6 +106,21 @@ def thinks(model):
     return _cache["caps"][model]
 
 
+def user_text(model, prompt):
+    """Qwen models also have their own 'don't think' switch, written in the message.
+    Ollama's setting alone isn't always obeyed, so we send both."""
+    return prompt + "\n\n/no_think" if model.lower().startswith("qwen") else prompt
+
+
+REASONING_START = re.compile(r"^\s*(we are given|we have \d+ sources|okay[,.]|ok[,.] |alright|let'?s |let me |first,? (i|we|let)|"
+                             r"i need to|the user (is asking|wants|asks)|to answer (this|the question))", re.I)
+
+
+def looks_like_thinking(text):
+    """True if a model has started 'thinking out loud' instead of answering."""
+    return bool(REASONING_START.search(text[:200]))
+
+
 def extras(model):
     """Extra settings for a request: no thinking, when the model allows it."""
     return {"think": False} if thinks(model) else {}

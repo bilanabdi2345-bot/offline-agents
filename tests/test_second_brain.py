@@ -536,6 +536,22 @@ class Models(unittest.TestCase):
         self.assertEqual("".join(models.clean_stream(["<|channel>thought\n<channel|>", "Answer [2]"])), "Answer [2]")
         self.assertEqual("".join(models.clean_stream(["Fewer < 5 people ", "and <b>"])), "Fewer < 5 people and <b>")
 
+    def test_spots_a_model_thinking_out_loud(self):
+        from secondbrain import models
+        self.assertTrue(models.looks_like_thinking("We are given today's date: 5 Jan 2027. We have 10 sources."))
+        self.assertTrue(models.looks_like_thinking("Okay, let me look at the sources."))
+        self.assertFalse(models.looks_like_thinking("Megan covered code review and prompt safety on 9 Dec [1]."))
+        self.assertFalse(models.looks_like_thinking("The pilot now starts on 26 January [1]."))
+
+    def test_qwen_gets_its_own_no_think_switch(self):
+        from secondbrain import models
+        self.assertTrue(models.user_text("qwen3:4b", "Q").endswith("/no_think"))
+        self.assertEqual(models.user_text("llama3.2:3b", "Q"), "Q")
+
+    def test_fallback_quotes_content_not_headings(self):
+        ctx = brain.prepare("What did Megan cover in the intern training?", comps())
+        self.assertIn("covered: how we review PRs", brain.quote_answer(ctx))
+
     def test_thinking_switched_off_only_for_models_that_think(self):
         from secondbrain import models
         with mock.patch.dict(models._cache["caps"], {"qwen3:8b": True, "llama3.2:3b": False}):
