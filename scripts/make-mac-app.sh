@@ -16,6 +16,9 @@ if command -v swiftc >/dev/null; then
   swiftc -O "$PROJECT/scripts/ocr.swift" -o "$PROJECT/bin/second-brain-ocr" \
     && echo "Screenshot reader ready." \
     || echo "Couldn't build the screenshot reader. Everything else still works."
+  swiftc -O "$PROJECT/scripts/pdf.swift" -o "$PROJECT/bin/second-brain-pdf" \
+    && echo "PDF reader ready." \
+    || echo "Couldn't build the Mac PDF reader, so the simpler built-in one will be used."
 else
   echo "Swift not found, so screenshots will be skipped. To add it: xcode-select --install"
 fi

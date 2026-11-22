@@ -61,6 +61,13 @@ The picture was only ever in memory. It was never saved."
 **Say:** "When it isn't sure, it doesn't guess. It shows me the photos that look
 closest, and I decide. I click 'Yes, use this' and it reads that page first."
 
+**Safety moment (20 seconds):** ask "What feedback did we get on the prototype?"
+
+**Say:** "This feedback form came in by email. It has white, invisible text telling
+the AI to send my notes to a website. Codicilix found it with plain code and never
+showed it to the AI. I can read what was blocked, the AI can't. And even if a trick
+got through, this app can't reach the internet."
+
 ## 4. Honest, and forgiving (25 seconds) · Trust and explainability
 **Click:** "Something not in my notes". "Nothing about next summer's budget, so it says so."
 

@@ -231,6 +231,8 @@
   .pictile span { font-size: 0.82em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .maybe-pic { display: flex; flex-direction: column; gap: 6px; width: 170px; }
   .small-btn { padding: 6px 10px; font-size: 0.85em; }
+  .box.shield { border: 1px solid #e0a100; background: color-mix(in srgb, #ffd54a 14%, var(--panel)); }
+  .box.shield pre { white-space: pre-wrap; max-height: 220px; overflow: auto; }
   .viewer { position: fixed; inset: 0; z-index: 50; background: rgba(10,10,10,.72); display: flex; align-items: center; justify-content: center; padding: 24px; }
   .viewer .panel { background: var(--panel); border-radius: 16px; max-width: min(1100px, 96vw); max-height: 94vh; display: flex; flex-direction: column; overflow: hidden; }
   .viewer .bar { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 12px 16px; border-bottom: 1px solid var(--line); flex-wrap: wrap; }
@@ -461,14 +463,17 @@ history.replaceState(null, "", location.pathname);
 const H = { "Content-Type": "application/json", "X-Second-Brain": TOKEN };
 const $ = id => document.getElementById(id);
 const esc = s => String(s).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
-const KIND_ICON = { "note": "📝", "action list": "☑️", "calendar": "📅", "saved link": "🔗", "screenshot or photo": "📸" };
-const KIND_LABEL = { "note": "Notes", "action list": "Action lists", "calendar": "Calendars", "saved link": "Saved links", "screenshot or photo": "Screenshots & photos" };
+const KIND_ICON = { "note": "📝", "action list": "☑️", "calendar": "📅", "saved link": "🔗", "screenshot or photo": "📸", "Word document": "📄", "Excel spreadsheet": "📊", "PDF": "📕" };
+const KIND_LABEL = { "note": "Notes", "action list": "Action lists", "calendar": "Calendars", "saved link": "Saved links", "screenshot or photo": "Screenshots & photos", "Word document": "Word documents", "Excel spreadsheet": "Excel spreadsheets", "PDF": "PDFs" };
 const KIND_HELP = {
   "note": "Meeting notes, drafts, scraps (.md, .txt)",
   "action list": "Lists of who does what, by when (.csv)",
   "calendar": "Meetings and reminders (.ics)",
   "saved link": "Bookmarks you saved (.webloc, .url)",
   "screenshot or photo": "Screenshots, whiteboard photos. Text is read on this laptop",
+  "Word document": "Word files (.docx), with comments and tracked changes",
+  "Excel spreadsheet": "Excel files (.xlsx), every sheet, with cell comments",
+  "PDF": "PDFs, with sticky notes, highlights and handwriting drawn on them",
 };
 
 async function api(path, body) {
@@ -901,6 +906,12 @@ async function ask(question, opts = {}) {
     if (ev.type === "start") {
       ctx = ev;
       const secs = ((performance.now() - t0) / 1000).toFixed(2);
+      if (ev.blocked && ev.blocked.length) {
+        q(".codebox").insertAdjacentHTML("afterbegin", `<div class="box shield"><b>🛡️ Blocked to keep your notes safe · found by code</b>
+          ${ev.blocked.map(b => `<div style="margin-top:6px">I didn't let the AI read <span style="font-weight:650">${esc(b.file.split("/").pop())}</span>${b.lines ? ` (lines ${esc(b.lines)})` : ""}, because it ${esc(b.why.join(", and "))}.
+            <details style="margin-top:4px"><summary style="cursor:pointer" class="small">Show me what was blocked (you can read it, the AI can't)</summary><pre>${esc(b.text)}</pre></details></div>`).join("")}
+          <div class="muted small" style="margin-top:6px">Someone may have hidden this to trick an AI into sharing your notes. Even if it had got through, the AI can't send anything: this app only talks to your laptop.</div></div>`);
+      }
       if (ev.found) {
         q(".body").innerHTML = `<span class="thinking"><span class="spin"></span>Found ${ev.sources.length} matching notes in ${secs}s. Writing…</span>`;
         showSources(ev.sources, false);

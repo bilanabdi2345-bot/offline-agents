@@ -416,6 +416,12 @@ def prepare(question, compartments, model=None, pasted=None, focus=None):
         missing = []  # the question may be about the picture rather than the notes
     on_names = ", ".join(c["name"] for c in compartments.on()) or "nothing"
     sources = []
+    # The shield: anything that looks like instructions to the AI is never shown
+    # to it. The manager sees what was blocked and why.
+    blocked = [c for c in picked if "looks like instructions" in c.flags]
+    picked = [c for c in picked if c not in blocked]
+    if blocked and not picked:
+        missing = missing or []
     for n, c in enumerate(picked, start=1):
         d = c.to_dict(day)
         d["n"] = n
@@ -437,6 +443,8 @@ def prepare(question, compartments, model=None, pasted=None, focus=None):
         "_on": on_names,
         "prompt": build_prompt(question, picked, missing, day, info.get("sections")) if picked else None,
         "brief": _brief(picked, info, day),
+        "blocked": [{"file": c.rel, "lines": f"{c.line_start}-{c.line_end}", "why": getattr(c, "why_blocked", []),
+                     "text": c.text[:1500]} for c in blocked],
         "maybe_pictures": [] if pasted else maybe_pictures(question, chunks, day),
         "_read_seconds": round(time.time() - started, 1),
     }

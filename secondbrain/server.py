@@ -284,7 +284,7 @@ def make_handler(app, port):
 PICK_SCRIPTS = {
     "folder": ['set f to choose folder with prompt "Choose a folder of notes for Codicilix"',
                "return POSIX path of f"],
-    "files": ['set fs to choose file with prompt "Choose notes, photos or screenshots for Codicilix" with multiple selections allowed',
+    "files": ['set fs to choose file with prompt "Choose notes, documents, photos or screenshots for Codicilix" with multiple selections allowed',
               'set out to ""', "repeat with f in fs", "set out to out & POSIX path of f & linefeed", "end repeat",
               "return out"],
 }

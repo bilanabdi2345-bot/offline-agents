@@ -31,8 +31,13 @@ KINDS = {
     ".jpg": "screenshot or photo",
     ".jpeg": "screenshot or photo",
     ".heic": "screenshot or photo",
+    ".docx": "Word document",
+    ".xlsx": "Excel spreadsheet",
+    ".pdf": "PDF",
 }
-ALL_KINDS = sorted(set(KINDS.values()))
+DOC_KINDS = {".docx", ".xlsx", ".pdf"}  # read by docs.py, comments and markings included
+MAX_DOC_BYTES = 40 * 1024 * 1024
+ALL_KINDS = list(dict.fromkeys(KINDS.values()))  # in the order above
 MAX_FILE_BYTES = 512 * 1024
 
 MONTHS = {
@@ -265,7 +270,11 @@ def read_compartment(name, folder, today, kinds=None, files=None):
                 images.append((path, rel, fname, mtime))
                 continue
 
-            text = _read_text(path)
+            if ext in DOC_KINDS:
+                from . import docs
+                text = docs.extract(path) if os.path.getsize(path) <= MAX_DOC_BYTES else None
+            else:
+                text = _read_text(path)
             if text is None:
                 continue
             files.append(rel)
@@ -334,9 +343,15 @@ def add_flags(chunk, today):
             chunk.flags.append("overdue")
     if chunk.date and (today - chunk.date).days > 45 and chunk.kind == "note":
         chunk.flags.append("older than 6 weeks")
-    if chunk.kind in ("note", "screenshot or photo") and re.search(
-        r"ignore (all |any |your |previous )*(rules|instructions)|system message|"
-        r"(send|email|upload|post) (it|this|everything|all)[^.]{0,40}(to|at) |https?://", t):
+    # The shield: text trying to talk to the AI is found by code and blocked.
+    from . import shield
+    chunk.text, hidden = shield.clean(chunk.text)
+    if hidden:
+        chunk.flags.append("hidden text in file")
+    if "[Hidden text in the document" in chunk.text or "(hidden sheet)" in chunk.text:
+        chunk.flags.append("hidden text in file")
+    chunk.why_blocked = shield.check(chunk.text, chunk.kind)
+    if chunk.why_blocked:
         chunk.flags.append("looks like instructions")
     if "confidential" in t or "private" in t:
         chunk.flags.append("marked private")

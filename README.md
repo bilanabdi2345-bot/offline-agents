@@ -11,6 +11,8 @@ Built for the Pfizer AI Studio and Newpage hackathon, University of Bristol, Nov
 - **Ask**: a chat about your notes, with quick asks down the side and your next meeting ready to prepare for. Paste, drop or attach a photo or screenshot (📎) and it's read on the spot, in memory only.
 - **Meetings**: past and upcoming meetings from your calendar, each linked to the notes written that day. **Prepare me** for what's coming, **Recap** for what's done.
 - **Photo viewer**: any answer that used a photo has a 🔍 button. It shows the original picture, so you can read your own handwriting yourself, and every word the Mac recognised can be selected and copied straight off the photo, like Google Lens. Words that match your question are highlighted in yellow, even when the handwriting was read slightly wrong.
+- **Word, Excel and PDF files**, including what people wrote on them: comments in the margin, tracked changes (who crossed out "12 Jan" and wrote "26 Jan"), cell comments in Excel, and sticky notes, highlights and handwriting on PDFs. Read in memory; nothing to install, nothing saved, and macros are never run.
+- **The shield**: if a file hides instructions aimed at the AI (white text, a hidden sheet, invisible characters, a sneaky comment), code finds them and the AI never sees them. You get a yellow **Blocked to keep your notes safe** box saying what was blocked and why, and you can read it yourself.
 - **"Did you mean one of these?"**: when Codicilix isn't sure, it shows the photos and screenshots from your folders that look closest. You look, and if one is right, click **Yes, use this** and it answers again reading that photo first.
 - **Folders & access**: switch folders on or off, and choose which kinds of things may be read: notes, action lists, calendars, saved links, and screenshots & photos.
 - **Check-up**: one button tests every promise. Add a monthly reminder to your calendar.
@@ -73,6 +75,7 @@ make out is marked *unclear* rather than guessed. Spelling mistakes are forgiven
 | You choose what it sees | Notes are split into compartments (Team, Projects, Personal). Switched off means never opened. | Switch Personal off and ask about it: the answer says it didn't look there, and the file list proves it. |
 | Honest when unsure | If nothing matches, the AI isn't even asked; you get "I couldn't find that". Warnings for overdue, unfinished, old and private notes come from code, not the AI. | Ask about something that isn't there, e.g. "the budget for next summer's interns". |
 | Safe even next to other programs | A new secret key every launch, only given to the app window. Other programs on the laptop (even malware) and other websites are refused. The AI has no tools, so a note with hidden instructions can't make it send anything. | Open http://127.0.0.1:8765 in a new tab without the key: it's refused. |
+| Hidden instructions can't steer it | The shield (plain code, so it can't be talked round) checks every note, comment, hidden text and invisible character for text aimed at the AI, and blocks it before the AI sees anything. | Ask "What feedback did we get on the prototype?": the feedback form's hidden white text is blocked. The Check-up also hides four tricks in test notes and shows they were caught. |
 | Explains itself | Every answer lists the files read, the files used, dates and ages, and a confidence level with the reason. | Click any numbered source chip. |
 
 More detail: [docs/how-it-keeps-notes-yours.md](docs/how-it-keeps-notes-yours.md)
@@ -129,6 +132,11 @@ this). No real company information is used.
 The notes are messy on purpose: a pilot date that moved from 12 to 26 January,
 an unfinished handover draft that still says 12 January, an overdue action,
 scraps with no dates, a private folder, and photos of real handwritten notes.
+There's also a Word pilot plan with margin comments and a tracked change, an
+Excel intern plan where Xinyue asks for an extra day in a cell comment, a PDF
+with Sophie's sticky notes and highlight, and one **trap**: a "feedback form"
+with white, invisible text telling the AI to send the notes away. They're made
+by `scripts/make-sample-documents.py`, so you can see exactly what's in them.
 The app treats **5 January 2027** as "today" (`demo_today` in `config.json`).
 
 ## Run the tests
@@ -137,7 +145,7 @@ The app treats **5 January 2027** as "today" (`demo_today` in `config.json`).
 python3 -B -m unittest discover tests
 ```
 
-50 tests. They use a fake AI model, so they run anywhere.
+62 tests. They use a fake AI model, so they run anywhere.
 
 ## Project layout
 
