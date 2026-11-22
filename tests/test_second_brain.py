@@ -198,6 +198,19 @@ class Answering(unittest.TestCase):
         self.assertLess(last, p.index("2026-11-02 1-1 Priya.md"))
         self.assertLess(p.index("2026-11-02 1-1 Priya.md"), p.index("=== OPEN ACTIONS"))
 
+    def test_prepare_me_brief_from_code(self):
+        from secondbrain import ocr
+        os.environ["FAKE_OCR_TEXT"] = "Corridor chat with Priya. Offered a role in Dana's other team"
+        ocr.forget()
+        try:
+            q = brain.meeting_question(comps())["question"]
+            ctx = brain.prepare(q, comps(), "test-model")
+            self.assertEqual(ctx["brief"]["last_meeting"], "2 Nov 2026")
+            self.assertIn("Notebook 2026-11-20.jpg", [x["file"] for x in ctx["brief"]["new_since"]])
+        finally:
+            os.environ["FAKE_OCR_TEXT"] = "Quick Note: Q4 marketing budget finance said NO"
+            ocr.forget()
+
     def test_prompt_example_has_no_real_facts(self):
         # The model once copied facts from the example; the example must be placeholders only.
         self.assertNotIn("December", brain.SYSTEM)

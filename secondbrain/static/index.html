@@ -621,7 +621,22 @@ async function loadState() {
 }
 
 /* ---------- Answers ---------- */
+function tidyAnswer(text) {
+  const out = [];
+  for (const raw of text.split("\n")) {
+    const line = raw.trim();
+    if (/^(\[?\d+\]?[\s,]*)+$/.test(line) && out.length) {          // a line that is only source numbers
+      const nums = line.match(/\d+/g).map(n => `[${n}]`).join("");
+      for (let i = out.length - 1; i >= 0; i--) { if (out[i].trim() && !/:\s*$/.test(out[i].trim())) { out[i] = out[i].replace(/\s*$/, " " + nums); break; } }
+      continue;
+    }
+    if (/^[-*•\s]*then:?\s*$/i.test(line) || /^[-*•\s]*after the four headings:?\s*$/i.test(line)) continue;
+    out.push(raw);
+  }
+  return out.join("\n");
+}
 function renderAnswerText(text) {
+  text = tidyAnswer(text);
   let html = "", inList = false, warn = [], miss = [], section = "main";
   for (const raw of text.split("\n")) {
     const line = raw.trim();
@@ -676,8 +691,9 @@ async function ask(question) {
   card.innerHTML = `
     <div class="head"><span class="who"><span class="dot">✦</span>Codicilix</span>
       <span style="display:flex;gap:8px;align-items:center"><span class="conf"></span><button class="btn speak" hidden>🔊 Read aloud</button></span></div>
+    <div class="codebox"></div>
     <div class="body"><span class="thinking"><span class="spin"></span>Reading your notes on this laptop…</span></div>
-    <div class="codebox"></div><div class="whybox"></div><div class="srcbox"></div>
+    <div class="whybox"></div><div class="srcbox"></div>
     <div class="muted small foot" style="margin-top:8px"></div>`;
   $("thread").append(you, card);
   you.scrollIntoView({ behavior: "smooth", block: "start" });
@@ -704,6 +720,9 @@ async function ask(question) {
       if (ev.found) {
         q(".body").innerHTML = `<span class="thinking"><span class="spin"></span>Found ${ev.sources.length} matching notes in ${secs}s. Writing…</span>`;
         showSources(ev.sources, false);
+        if (ev.brief && ev.brief.new_since.length) q(".codebox").insertAdjacentHTML("beforeend",
+          `<div class="box warn" style="background:var(--a-soft);color:var(--text);margin:0 0 10px"><b style="color:var(--a-text)">📌 New since your last meeting${ev.brief.last_meeting ? " on " + esc(ev.brief.last_meeting) : ""} · found by code</b>`
+          + ev.brief.new_since.filter((x, i, a) => a.findIndex(y => y.file === x.file) === i).map(x => `<div>${KIND_ICON[x.kind] || "📝"} ${esc(x.file)} <span class="muted">· ${esc(x.date)}</span> <button class="cite" data-n="${x.n}">${x.n}</button></div>`).join("") + `</div>`);
         if (ev.spelling && ev.spelling.length) q(".codebox").insertAdjacentHTML("beforeend", `<div class="box miss"><b>Spelling</b>I read ${ev.spelling.map(s => `“${esc(s.typed)}” as “${esc(s.read_as)}”`).join(", ")}.</div>`);
         if (ev.missing.length) q(".codebox").innerHTML += `<div class="box miss"><b>Checked by code</b>None of your notes mention: ${esc(ev.missing.join(", "))}. Anything about that is only loosely related.</div>`;
       }

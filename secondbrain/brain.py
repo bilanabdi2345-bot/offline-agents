@@ -134,7 +134,8 @@ def build_prompt(question, picked, missing, day, sections=None):
         *([
             "Answer with these headings, in this order, each followed by 1-3 short bullet points with source numbers:",
             "Since last time:", "Last time:", "Open actions:", "Follow up:",
-            "Then:",
+            "Put the source number at the END of the same line as each fact, like: - She was offered a new role [1]",
+            "After the four headings:",
         ] if sections else ["Answer with:", "1. The answer, as short bullet points with source numbers."]),
         "2. A line starting 'Watch out:' for anything out of date, conflicting, unfinished, overdue or private. Skip it if there is nothing.",
         "3. A line starting 'Not in your notes:' for any part you could not find. Skip it if you found everything.",
@@ -186,7 +187,7 @@ def ask_model_stream(prompt, model, keep_alive):
             ],
             "stream": True,
             "keep_alive": int(keep_alive) if str(keep_alive).isdigit() else keep_alive,
-            "options": {"temperature": 0.1, "num_ctx": 8192},
+            "options": {"temperature": 0.1, "num_ctx": 8192, "num_predict": 450},
         }
     ).encode()
     req = urllib.request.Request(
@@ -293,6 +294,7 @@ def prepare(question, compartments, model=None):
         "_started": started,
         "_on": on_names,
         "prompt": build_prompt(question, picked, missing, day, info.get("sections")) if picked else None,
+        "brief": _brief(picked, info, day),
         "_read_seconds": round(time.time() - started, 1),
     }
 
@@ -348,6 +350,21 @@ def meeting_sources(title, question, chunks, day, info, limit=8):
     info["sections"] = sections
     info["last_date"] = last_date
     return picked, [], []
+
+
+def _brief(picked, info, day):
+    """What the code itself knows for a meeting: when the last one was and
+    what has been written since. Shown as-is, so the AI can't drop it."""
+    sections = info.get("sections")
+    if not sections:
+        return None
+    new = []
+    for n, c in enumerate(picked, start=1):
+        if sections.get(id(c)) == "SINCE LAST TIME":
+            new.append({"n": n, "file": c.rel.split("/")[-1], "kind": c.kind,
+                        "date": notes.nice_date(c.date) if c.date else ""})
+    last = info.get("last_date")
+    return {"last_meeting": notes.nice_date(last) if last else None, "new_since": new}
 
 
 def _explain(ctx, used_files):
