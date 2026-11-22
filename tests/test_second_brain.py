@@ -215,6 +215,17 @@ class Answering(unittest.TestCase):
             os.environ["FAKE_OCR_TEXT"] = "Quick Note: Q4 marketing budget finance said NO"
             ocr.forget()
 
+    def test_unclear_handwriting_is_marked(self):
+        brain._WORDS = {"corridor", "chat", "with", "offered", "role", "other", "team", "not", "sure", "take",
+                        "wants", "talk", "about", "monday", "launch"}
+        try:
+            out = brain.clean_handwriting("Corridor chat with Priya\nWants to kulkaboul on monday\n50', sunuary launch emcul roady")
+            self.assertIn("Corridor chat with Priya", out)
+            self.assertIn("[unclear handwriting]", out)
+            self.assertNotIn("emcul", out)
+        finally:
+            brain._WORDS = None
+
     def test_prompt_example_has_no_real_facts(self):
         # The model once copied facts from the example; the example must be placeholders only.
         self.assertNotIn("December", brain.SYSTEM)

@@ -623,7 +623,11 @@ async function loadState() {
 /* ---------- Answers ---------- */
 function tidyAnswer(text) {
   const out = [];
-  for (const raw of text.split("\n")) {
+  let bullets = 0, capped = false;
+  for (let raw of text.split("\n")) {
+    raw = raw.replace(/^\s*[=#*]{2,}\s*|\s*[=#*]{2,}\s*$/g, "");     // "=== What's new ===" -> "What's new"
+    if (/^(what['’]s new|ask about)\s*:?\s*$/i.test(raw.trim())) { raw = raw.trim().replace(/:?$/, ":"); bullets = 0; capped = true; }
+    if (capped && /^\s*[-*•]\s/.test(raw)) { bullets++; if (bullets > 3) continue; }
     const line = raw.trim();
     if (/^(\[?\d+\]?[\s,]*)+$/.test(line) && out.length) {          // a line that is only source numbers
       const nums = line.match(/\d+/g).map(n => `[${n}]`).join("");

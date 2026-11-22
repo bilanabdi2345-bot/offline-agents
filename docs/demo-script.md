@@ -16,14 +16,23 @@ Record your screen with QuickTime: File, then New Screen Recording. Speak slowly
 
 **Say:** "This is a manager's notes. Meeting notes, an action list, stand-up scraps, saved links, calendar reminders. They're messy and all over the place. In ten minutes this manager has a 1:1 with Priya, and the details are spread across six files."
 
-## 2. The one useful moment (50 seconds) · Working end to end, Creative use of AI
-**Show:** click **Prepare me** on the "1:1 with Priya" card. Wait for the answer.
+## 2. The one useful moment (60 seconds) · Working end to end, Creative use of AI
+**Show:** your real notebook page (hold it up, or show the photo).
 
-**Say:** "Codicilix found the meeting in my calendar and pulled together what matters. What happened last time, what's still open, and what to follow up on."
+**Say:** "This is a handwritten note from a corridor chat. Priya's been offered a job in another team. I have a 1:1 with her tomorrow."
 
-**Point at:** the Watch out box. "It warns me that two of my own actions are overdue. That warning comes from code, not the AI, so I can rely on it."
+**Click:** **Prepare me** on the "1:1 with Priya" card. (Cut the waiting in editing — say "this runs entirely on my laptop".)
 
-**Click:** a numbered source chip. "Every fact links to the exact note and lines it came from, with the date and how old it is."
+**Point at the green box:** "First, the code finds my last 1:1 with Priya in my calendar, and lists everything written about her since then — including my handwritten note, which my Mac read itself."
+
+**Point at What's new / Ask about:** "Then the local AI does the judgement: what matters most, and what to ask. Her job offer comes first."
+
+**Point at Open actions:** "The actions are listed by code, not the AI, so overdue is always right."
+
+**Click a source number:** "Every point links to the exact note."
+
+## 2b. Spelling (10 seconds) · Coping with messy input
+**Type:** "is prya thinking of leeving?" **Say:** "Typos happen when you're in a rush. It forgives my spelling, and shows me how it read it."
 
 ## 3. Messy and out of date (30 seconds) · Coping with messy notes, Trust
 **Click:** the chip "When is the patient app launching?"

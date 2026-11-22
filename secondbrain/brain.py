@@ -102,6 +102,43 @@ Watch out: <a real warning from the sources> [<source number>]
 Not in your notes: <the part of the question the sources don't answer>"""
 
 
+_WORDS = None
+
+
+def _dictionary():
+    """A list of real English words, from the one built into macOS (offline)."""
+    global _WORDS
+    if _WORDS is None:
+        _WORDS = set()
+        for path in ("/usr/share/dict/words", "/usr/share/dict/web2"):
+            try:
+                with open(path, encoding="utf-8", errors="ignore") as f:
+                    _WORDS = {w.strip().lower() for w in f if w.strip()}
+                break
+            except OSError:
+                continue
+    return _WORDS
+
+
+def clean_handwriting(text, known=()):
+    """Mark lines of handwriting that the text reader got badly wrong, so the
+    AI doesn't repeat nonsense. A line is kept if most of its words are real
+    English words, names, or words found elsewhere in the notes."""
+    words_ok = _dictionary()
+    if not words_ok:
+        return text  # no word list on this computer: leave the text as it is
+    known = {k.lower() for k in known}
+    out = []
+    for line in text.splitlines():
+        words = re.findall(r"[A-Za-z]{3,}", line)
+        if not words:
+            out.append(line)
+            continue
+        good = sum(1 for w in words if w.lower() in words_ok or w.lower() in known or w[0].isupper())
+        out.append(line if good / len(words) >= 0.7 else "[unclear handwriting]")
+    return "\n".join(out)
+
+
 SECTION_HELP = {
     "SINCE LAST TIME": "SINCE LAST TIME (new since the last meeting - the most important news, always include it)",
     "LAST TIME": "LAST TIME (notes from the last meeting)",
@@ -111,6 +148,10 @@ SECTION_HELP = {
 
 
 def build_prompt(question, picked, missing, day, sections=None):
+    known_words = set()
+    for c in picked:
+        if c.kind != "screenshot or photo":
+            known_words.update(re.findall(r"[a-z]{3,}", c.text.lower()))
     lines = [f"Today is {notes.nice_date(day)} ({day.strftime('%A')}).", "", "SOURCES:"]
     current = None
     for n, c in enumerate(picked, start=1):
@@ -125,7 +166,7 @@ def build_prompt(question, picked, missing, day, sections=None):
         when = f"{notes.nice_date(c.date)}" + (f", {age} days ago" if age is not None and age >= 0 else "")
         flags = f" | WARNING: {', '.join(c.flags)}" if c.flags else ""
         lines.append(f"[{n}] {c.rel} ({c.kind}, {when}){flags}")
-        lines.append(c.text)
+        lines.append(clean_handwriting(c.text, known_words) if c.kind == "screenshot or photo" else c.text)
         lines.append("")
     if missing:
         lines.append(f"These words from the question appear nowhere in the notes: {', '.join(missing)}.")
@@ -140,7 +181,8 @@ def build_prompt(question, picked, missing, day, sections=None):
             "What's new: the most important things that changed since the last meeting (use the SINCE LAST TIME sources first).",
             "Ask about: questions to ask in this meeting.",
             "Put the source number at the END of each line, like: - She was offered a new role [1]",
-            "If a word from handwriting makes no sense, leave it out. Do not write anything else.",
+            "Lines marked [unclear handwriting] could not be read: never guess them. Do not write anything else.",
+            "Write the headings exactly as: What's new:  and  Ask about:",
         ]
     else:
         lines += [

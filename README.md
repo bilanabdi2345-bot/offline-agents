@@ -25,18 +25,33 @@ Screenshots and whiteboard photos are read by Apple's built-in Vision text reade
 
 ## The moment it fixes
 
-You have a 1:1 in ten minutes. Your notes about that person are spread across
-meeting notes, an action list, stand-up scraps and a calendar reminder.
+You have a 1:1 with Priya in ten minutes. What you need is spread across a
+handwritten notebook page, stand-up scraps, a whiteboard photo, an action list
+and last meeting's notes.
 
-Click **Prepare me**. Codicilix gathers what matters:
-- what happened last time,
-- which actions are still open or overdue,
-- what has changed since,
-- what to follow up on.
+Click **Prepare me**. Codicilix builds the brief in two layers:
 
-Every fact links to the exact note it came from.
-It warns you when a note is out of date, unfinished or private.
-When something isn't in your notes, it says so instead of guessing.
+**Found by code** (reliable, can't be dropped or invented):
+- 📌 **New since your last meeting** — it finds the last 1:1 in your calendar
+  and lists every note, photo and scrap about Priya written since then
+- **Open actions** about her, correctly marked overdue or not
+- **Last time** — your own notes from that meeting
+
+**Written by the local AI** (the judgement):
+- **What's new** — the most important changes, in 2-3 points
+- **Ask about** — questions to ask in the meeting
+
+Every point links to the note it came from. Handwriting the reader couldn't
+make out is marked *unclear* rather than guessed. Spelling mistakes in your
+questions are forgiven ("prya" → Priya), and when something isn't in your notes
+it says so instead of guessing.
+
+| | |
+|---|---|
+| ![Meetings](docs/screenshots/meetings.png) | ![Check-up](docs/screenshots/checkup.png) |
+| ![Folders & access](docs/screenshots/folders.png) | ![Themes](docs/screenshots/themes.png) |
+
+*Screenshots taken with the made-up sample notes in this repo.*
 
 ## How it keeps your notes yours
 
@@ -102,7 +117,7 @@ private folder.
 python3 -B -m unittest discover tests
 ```
 
-30 tests. They use a fake AI model, so they run anywhere.
+39 tests. They use a fake AI model, so they run anywhere.
 
 ## Project layout
 
