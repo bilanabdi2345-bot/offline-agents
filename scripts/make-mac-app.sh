@@ -54,6 +54,18 @@ if command -v sips >/dev/null && command -v iconutil >/dev/null; then
   done
   iconutil -c icns "$SET" -o "$APP/Contents/Resources/icon.icns"
 fi
+# A double-click "Update Codicilix" button, next to the app.
+cat > "$HOME/Applications/Update Codicilix.command" <<UPD
+#!/bin/bash
+"$PROJECT/scripts/update.sh"
+echo
+read -n 1 -s -r -p "Press any key to close this window."
+UPD
+chmod +x "$HOME/Applications/Update Codicilix.command"
+
 echo "Done: $APP"
-echo "First time: right-click it and choose Open. Then drag it into your Dock."
-open "$HOME/Applications"
+if [ -z "$QUIET" ]; then
+  echo "First time: right-click it and choose Open. Then drag it into your Dock."
+  echo "To update later, double-click 'Update Codicilix' in Applications."
+  open "$HOME/Applications"
+fi

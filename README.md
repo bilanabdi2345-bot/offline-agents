@@ -69,6 +69,10 @@ More detail: [docs/how-it-keeps-notes-yours.md](docs/how-it-keeps-notes-yours.md
 
 You can now turn Wi-Fi off. It keeps working.
 
+**Updating:** double-click **Update Codicilix** in Applications. It takes the newest
+`codicilix*.zip` from Downloads (or the latest from GitHub), runs the tests, pushes to
+GitHub, and rebuilds and reopens the app. If any test fails, it stops and changes nothing on GitHub.
+
 **Without the app icon:** run `python3 -B -m secondbrain` in the project folder.
 It opens http://127.0.0.1:8765 in your browser.
 
