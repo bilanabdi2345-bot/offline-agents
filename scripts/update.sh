@@ -20,9 +20,11 @@ say() { printf "\n\033[1m%s\033[0m\n" "$1"; }
 
 say "1. Looking for a new update..."
 ZIP="$(ls -t "$HOME"/Downloads/codicilix*.zip 2>/dev/null | head -1 || true)"
-STAMP="$PROJECT/.git/codicilix-last-zip"
-if [ -n "$ZIP" ] && [ "$(cat "$STAMP" 2>/dev/null)" != "$(stat -f '%N %m' "$ZIP" 2>/dev/null || stat -c '%n %Y' "$ZIP")" ]; then
-  echo "Found: $(basename "$ZIP")"
+mtime() { stat -c %Y "$1" 2>/dev/null || stat -f %m "$1"; }
+LAST_SAVE="$(git log -1 --format=%ct 2>/dev/null || echo 0)"
+# Only use a zip that is newer than the last saved change (so old zips never undo new work).
+if [ -n "$ZIP" ] && [ "$(mtime "$ZIP")" -gt "$LAST_SAVE" ]; then
+  echo "Found a new zip: $(basename "$ZIP")"
   TMP="$(mktemp -d)"
   unzip -q "$ZIP" -d "$TMP"
   # If the zip holds one folder, use what's inside it.
@@ -30,11 +32,13 @@ if [ -n "$ZIP" ] && [ "$(cat "$STAMP" 2>/dev/null)" != "$(stat -f '%N %m' "$ZIP"
   if [ ! -d "$SRC/secondbrain" ]; then echo "That zip doesn't look like Codicilix. Stopping."; exit 1; fi
   rsync -a --delete --exclude ".git" --exclude "bin" --exclude ".env" --exclude ".DS_Store" "$SRC/" "$PROJECT/"
   rm -rf "$TMP"
-  stat -f '%N %m' "$ZIP" > "$STAMP" 2>/dev/null || stat -c '%n %Y' "$ZIP" > "$STAMP"
   FROM="zip $(basename "$ZIP")"
+elif [ -n "$(git status --porcelain)" ]; then
+  echo "Found changes Claude made in this folder."
+  FROM="Claude"
 else
-  echo "No new zip in Downloads. Checking GitHub instead..."
-  git pull --ff-only || { echo "Couldn't get updates from GitHub."; exit 1; }
+  echo "Nothing new here. Checking GitHub..."
+  git pull --ff-only -q || echo "Couldn't check GitHub, carrying on."
   FROM="GitHub"
 fi
 

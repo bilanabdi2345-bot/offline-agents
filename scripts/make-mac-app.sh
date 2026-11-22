@@ -57,7 +57,7 @@ fi
 # A double-click "Update Codicilix" button, next to the app.
 cat > "$HOME/Applications/Update Codicilix.command" <<UPD
 #!/bin/bash
-"$PROJECT/scripts/update.sh"
+/bin/bash "$PROJECT/scripts/update.sh"
 echo
 read -n 1 -s -r -p "Press any key to close this window."
 UPD
