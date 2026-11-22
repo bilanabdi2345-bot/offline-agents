@@ -175,6 +175,25 @@ class Answering(unittest.TestCase):
         self.assertTrue(any("Whiteboard" in r["file"] for r in retro["related"]))
         self.assertEqual(m["upcoming"][0]["title"], "1:1 with Priya")
 
+    def test_prepare_me_includes_handwritten_note_and_no_calendar(self):
+        from secondbrain import ocr
+        os.environ["FAKE_OCR_TEXT"] = "Corridor chat with Priya. Offered a role in Dana's other team"
+        ocr.forget()
+        try:
+            q = brain.meeting_question(comps())["question"]
+            ctx = brain.prepare(q, comps(), "test-model")
+            files = [s["file"] for s in ctx["sources"]]
+            self.assertIn("Team/Notebook 2026-11-20.jpg", files[:3])
+            self.assertFalse(any(s["kind"] == "calendar" for s in ctx["sources"]))
+        finally:
+            os.environ["FAKE_OCR_TEXT"] = "Quick Note: Q4 marketing budget finance said NO"
+            ocr.forget()
+
+    def test_prompt_example_has_no_real_facts(self):
+        # The model once copied facts from the example; the example must be placeholders only.
+        self.assertNotIn("December", brain.SYSTEM)
+        self.assertNotIn("Priya", brain.SYSTEM)
+
     def test_next_meeting(self):
         m = brain.meeting_question(comps())
         self.assertEqual(m["title"], "1:1 with Priya")

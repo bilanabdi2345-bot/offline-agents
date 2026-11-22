@@ -128,7 +128,7 @@ def time_window(question, today):
 def _spread(scored, top_k, per_file):
     picked, per = [], Counter()
     for s, c in scored:
-        limit = per_file if c.kind == "note" else 4
+        limit = per_file if c.kind == "note" else 2 if c.kind == "calendar" else 4
         if per[c.rel] < limit:
             picked.append((s, c))
             per[c.rel] += 1
