@@ -1,0 +1,6 @@
+Holiday cover summary - from Mehreen, 4 Jan
+
+- 3 bugs fixed on staging: login timeout, wrong date format, empty summary screen
+- 1 still open: PDF export cuts off long summaries
+- nothing went to production
+- Chennai team asks: can they get access to the eval tests Bilan wrote?

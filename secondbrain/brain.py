@@ -187,7 +187,7 @@ def build_prompt(question, picked, missing, day, sections=None):
                 lines += ["", f"=== {SECTION_HELP[sec]} ==="]
                 current = sec
         age = (day - c.date).days if c.date else None
-        when = f"{notes.nice_date(c.date)}" + (f", {age} days ago" if age is not None and age >= 0 else "")
+        when = f"{notes.nice_date(c.date)}" + (f", {age} day{'' if age == 1 else 's'} ago" if age is not None and age >= 0 else "")
         flags = f" | WARNING: {', '.join(c.flags)}" if c.flags else ""
         lines.append(f"[{n}] {c.rel} ({c.kind}, {when}){flags}")
         lines.append(clean_handwriting(c.text, known_words) if c.kind == "screenshot or photo" else c.text)
@@ -323,7 +323,8 @@ def confidence(picked, cited, day):
     age = (day - newest).days
     warn = any(c.flags for c in used)
     if len(used) >= 2 and age <= 30 and not warn:
-        return "high", f"Based on {len(used)} notes, the newest from {age} days ago."
+        ago = "today" if age == 0 else f"{age} day{'' if age == 1 else 's'} ago"
+        return "high", f"Based on {len(used)} notes, the newest from {ago}."
     if len(used) >= 2 and age <= 30:
         return "medium", f"Based on {len(used)} notes, but some have warnings. Check the flagged ones."
     if age > 30:

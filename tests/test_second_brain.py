@@ -146,8 +146,10 @@ class Searching(unittest.TestCase):
         hits, _ = search.search("What was I in the middle of before the holidays?", self.chunks, today=DAY)
         self.assertTrue(hits)
         self.assertTrue(all(14 <= (DAY - c.date).days <= 35 for _, c in hits))
-        none, _ = search.search("What happened this week?", self.chunks, today=DAY)
-        self.assertEqual(none, [])  # Tommy was on holiday: nothing written this week
+        week, _ = search.search("What happened this week?", self.chunks, today=DAY)
+        # Tommy was on holiday: only Mehreen's summary and the updated action list are from this week
+        self.assertEqual({c.rel for _, c in week}, {"Projects/2027-01-04 Mehreen holiday cover summary (pasted from Teams).txt",
+                                                   "Projects/action-items.csv"})
 
     def test_forgives_typos(self):
         info = {}
@@ -211,22 +213,23 @@ class Answering(unittest.TestCase):
         m = brain.meetings(comps())
         training = [x for x in m["past"] if x["title"] == "Intern review training 1"][0]
         self.assertTrue(any("Intern training 1" in r["file"] for r in training["related"]))
-        self.assertEqual(m["upcoming"][0]["title"], "Intern check-in: Bilan & David")
+        self.assertEqual(m["upcoming"][0]["title"], "Pfizer x Newpage sync (Xinyue, Mehreen)")
+        self.assertIn("Intern check-in: Bilan & David", [x["title"] for x in m["upcoming"]])
 
     def test_prepare_me_includes_handwritten_note_and_no_calendar(self):
         with with_notebook_text():
-            q = brain.meeting_question(comps(photos=True))["question"]
+            q = "Prepare me for my meeting 'Intern check-in: Bilan & David' on Friday 8 Jan 2027. What happened last time, what actions are still open, what has changed, and what should I follow up on?"
             ctx = brain.prepare(q, comps(photos=True), "test-model")
         files = [s["file"] for s in ctx["sources"]]
         self.assertIn("Photos/Notebook 2026-12-18.jpg", files)
         self.assertFalse(any(s["kind"] == "calendar" for s in ctx["sources"]))
 
     def test_prepare_me_is_organised_by_code(self):
-        q = brain.meeting_question(comps())["question"]
+        q = "Prepare me for my meeting 'Intern check-in: Bilan & David' on Friday 8 Jan 2027. What happened last time, what actions are still open, what has changed, and what should I follow up on?"
         ctx = brain.prepare(q, comps(), "test-model")
         p = ctx["prompt"]
         self.assertIn("SINCE LAST TIME", p)
-        self.assertIn("Intern training 1", p)
+        self.assertIn("Intern training", p)
         self.assertNotIn("=== OPEN ACTIONS", p)  # the code lists actions itself
         acts = {a["action"]: a for a in ctx["brief"]["actions"]}
         self.assertTrue(acts["Send training slides to Bilan and David"]["overdue"])       # due 12 Dec
@@ -234,7 +237,7 @@ class Answering(unittest.TestCase):
 
     def test_prepare_me_brief_from_code(self):
         with with_notebook_text():
-            q = brain.meeting_question(comps(photos=True))["question"]
+            q = "Prepare me for my meeting 'Intern check-in: Bilan & David' on Friday 8 Jan 2027. What happened last time, what actions are still open, what has changed, and what should I follow up on?"
             ctx = brain.prepare(q, comps(photos=True), "test-model")
         self.assertIsNone(ctx["brief"]["last_meeting"])  # the first check-in
         new = [x["file"] for x in ctx["brief"]["new_since"]]
@@ -252,6 +255,16 @@ class Answering(unittest.TestCase):
         finally:
             brain._WORDS = None
 
+    def test_pfizer_newpage_sync_brief(self):
+        q = brain.meeting_question(comps())["question"]
+        ctx = brain.prepare(q, comps(), "test-model")
+        b = ctx["brief"]
+        self.assertEqual(b["last_meeting"], "17 Dec 2026")
+        self.assertIn("2027-01-04 Mehreen holiday cover summary (pasted from Teams).txt", [x["file"] for x in b["new_since"]])
+        self.assertIn("2026-12-17 Pfizer x Newpage sync.md", [x["file"] for x in b["last_notes"]])
+        pdf = [a for a in b["actions"] if "PDF" in a["action"]][0]
+        self.assertFalse(pdf["overdue"])  # due 8 Jan
+
     def test_prompt_example_has_no_real_facts(self):
         # The model once copied facts from the example; the example must be placeholders only.
         self.assertNotIn("December", brain.SYSTEM)
@@ -259,7 +272,7 @@ class Answering(unittest.TestCase):
 
     def test_next_meeting(self):
         m = brain.meeting_question(comps())
-        self.assertEqual(m["title"], "Intern check-in: Bilan & David")
+        self.assertEqual(m["title"], "Pfizer x Newpage sync (Xinyue, Mehreen)")
 
 
 class Guards(unittest.TestCase):

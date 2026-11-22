@@ -7,3 +7,5 @@ me,Submit standards review form,2026-12-18,open
 Bilan,Write prompt-injection test cases for the eval suite,2027-01-09,open
 David,Write RLS policy for the notes table,2027-01-09,open
 Sophie,Send list of pilot users,2027-01-15,open
+Xinyue,Fix PDF export cutting off long summaries,2027-01-08,open
+me,Decide who owns the eval tests (ask Bilan?),2027-01-06,open

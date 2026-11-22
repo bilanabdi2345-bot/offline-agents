@@ -25,25 +25,30 @@ Screenshots and whiteboard photos are read by Apple's built-in Vision text reade
 
 ## The moment it fixes
 
-**Monday 5 January. Tommy's first day back.**
+**Tuesday 5 January. Tommy's first day back.**
 
-Tommy is a manager in Pfizer's AI Studio. Q4 was a blur: a demo for the Medical
-team, code freeze, a Newpage team covering bugs from Chennai over Christmas, and
-two new interns, Bilan and David, who Megan trained before the break. Tommy
-promised himself he'd check in January whether the training stuck. That check-in
-is tomorrow, and his notes are everywhere.
+Tommy is a manager in Pfizer's AI Studio. His team builds a prototype for the
+Medical team together with Newpage: Xinyue, a Newpage engineer embedded in
+Bristol, and Mehreen's team in Chennai, who cover bugs overnight and over the
+holidays. Q4 was a blur: a demo, a moved pilot date, code freeze, and two new
+interns. Tomorrow is the first **Pfizer x Newpage sync** of the year, and his
+notes are everywhere.
 
 He clicks **Prepare me**. Codicilix builds the brief in two layers:
 
 **Found by code** (reliable, can't be dropped or invented):
-- 📌 **What you wrote about them recently**: Megan's training notes, the
-  stand-up scraps, his handwritten note, his "ask them to EXPLAIN" scrap
-- **Open actions** about them, correctly marked overdue or not
-  (Megan's slides: overdue. The interns' own tasks: not due yet)
+- 📌 **New since your last meeting on 17 Dec**: Mehreen's holiday-cover summary
+  (3 bugs fixed on staging, 1 still open, nothing went to production)
+- **Last time**: his own notes from the 17 Dec sync
+- **Open actions** for Newpage, correctly marked overdue or not
 
 **Written by the local AI** (the judgement):
 - **What's new**: the most important things, in 2-3 points
-- **Ask about**: questions to ask Bilan and David, such as "explain row level security"
+- **Ask about**: questions for the sync, like when the PDF fix lands, and
+  whether Chennai can have the eval tests
+
+A second example is in **Meetings**: the intern check-in with Bilan and David,
+where it suggests technical questions to check what Megan's training taught them.
 
 Every point links to the note it came from. Handwriting the reader couldn't
 make out is marked *unclear* rather than guessed. Spelling mistakes are forgiven

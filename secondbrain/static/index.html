@@ -684,7 +684,7 @@ function confidencePill(level) {
   return '<span class="pill bad">Confidence: low</span>';
 }
 function sourceCard(s, id) {
-  const age = s.age_days == null ? "" : s.age_days === 0 ? " · today" : s.age_days > 0 ? ` · ${s.age_days} days ago` : ` · in ${-s.age_days} days`;
+  const age = s.age_days == null ? "" : s.age_days === 0 ? " · today" : s.age_days > 0 ? ` · ${s.age_days} day${s.age_days === 1 ? "" : "s"} ago` : ` · in ${-s.age_days} day${s.age_days === -1 ? "" : "s"}`;
   const flags = s.flags.map(f => `<span class="tag flag">${esc(f)}</span>`).join("");
   return `<div class="src ${s.used ? "used" : ""}" id="${id}-src-${s.n}">
     <div class="meta"><span class="cite" style="cursor:default">${s.n}</span><b>${esc(s.file)}</b>

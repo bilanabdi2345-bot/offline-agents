@@ -13,28 +13,32 @@ Each part maps to a judging criterion. Cut the waiting in editing.
 ---
 
 ## 1. The problem (25 seconds) · Insight
-**Say:** "This is Tommy, a manager in Pfizer's AI Studio. Q4 was the busiest time of
-year: a demo for the Medical team, code freeze, Newpage covering bugs from Chennai
-over Christmas, and two new interns. Now it's 5 January, his first day back, and
-he's forgotten half of it."
+**Say:** "This is Tommy, a manager in Pfizer's AI Studio. He builds a prototype for
+the Medical team together with Newpage: Xinyue in Bristol, and Mehreen's team in
+Chennai who cover bugs overnight. Q4 was the busiest time of year: a demo, a moved
+pilot date, code freeze, two new interns. Now it's 5 January, his first day back.
+Tomorrow is the first Pfizer and Newpage sync of the year, and he's forgotten half of it."
 
-**Show:** the sample-notes folder in Finder, then hold up the notebook page.
+**Show:** the sample-notes folder in Finder, and hold up your notebook page.
 "His notes are everywhere. Meeting notes, scraps, a calendar, photos, and this."
 
 ## 2. The one useful moment (60 seconds) · Working end to end, Creative use of AI
-**Click:** **Prepare me** on "Intern check-in: Bilan & David".
+**Click:** **Prepare me** on "Pfizer x Newpage sync (Xinyue, Mehreen)".
 
-**Point at the green box:** "First, the code finds everything Tommy wrote about
-Bilan and David: Megan's training notes, stand-up scraps, and his handwritten note.
-My Mac read the handwriting itself."
+**Point at the green box:** "First, the code finds the last sync, on 17 December,
+and everything since: Mehreen's holiday summary from Chennai."
 
-**Point at What's new / Ask about:** "Then the local AI does the judgement: what
-matters, and what to ask them. Like: explain row level security without notes."
+**Point at What's new / Ask about:** "Then the local AI does the judgement. Three
+bugs fixed on staging, one still open, nothing went to production. And what to ask:
+when the PDF fix lands, and whether Chennai can have Bilan's eval tests."
 
-**Point at Open actions:** "Listed by code, so overdue is always right. Megan's
-slides are overdue. The interns' tasks aren't due until Friday."
+**Point at Open actions and Last time:** "Actions are listed by code, so overdue is
+always right. And here are my own notes from the last sync, one click away."
 
 **Click a source number:** "Every point links to the exact note."
+
+**Optional (15 seconds), Meetings page:** "It works for any meeting. Here's Friday's
+intern check-in: it suggests technical questions, to see what the training taught them."
 
 ## 3. Messy and out of date (30 seconds) · Trust
 **Click:** "When does the pilot start?"
