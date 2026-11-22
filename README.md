@@ -4,7 +4,11 @@ A private second brain for a manager's scattered notes.
 It runs only on your laptop. Nothing it reads ever leaves the laptop.
 It keeps no copy of your notes.
 
-Built for the Pfizer AI Studio and Newpage hackathon, University of Bristol, November 2026.
+Built for the Pfizer AI Studio and Newpage hackathon, University of Bristol, November 2026,
+by **Bilan Salim** and **David**. Codicilix combines the best ideas from both of our
+versions: Bilan's (handwriting, photos, documents, the shield, the app window) and
+David's ([davidxu16/ai-assistant](https://github.com/davidxu16/ai-assistant)): finding
+what changed since it was agreed, promises you made, and answers that work with no AI.
 
 ## Five pages
 
@@ -12,6 +16,9 @@ Built for the Pfizer AI Studio and Newpage hackathon, University of Bristol, Nov
 - **Meetings**: past and upcoming meetings from your calendar, each linked to the notes written that day. **Prepare me** for what's coming, **Recap** for what's done.
 - **Photo viewer**: any answer that used a photo has a 🔍 button. It shows the original picture, so you can read your own handwriting yourself, and every word the Mac recognised can be selected and copied straight off the photo, like Google Lens. Words that match your question are highlighted in yellow, even when the handwriting was read slightly wrong.
 - **Word, Excel and PDF files**, including what people wrote on them: comments in the margin, tracked changes (who crossed out "12 Jan" and wrote "26 Jan"), cell comments in Excel, and sticky notes, highlights and handwriting on PDFs. Read in memory; nothing to install, nothing saved, and macros are never run.
+- **What has changed?** Plain code compares your notes and finds dates and amounts that moved, like the pilot going from 12 to 26 January, and warns you which files still say the old thing. A green box shows it next to any answer it affects. (From David's version.)
+- **What do I owe people?** Your open actions and the "I'll…" / "me:" lines from your notes, overdue first, all quoted. (From David's version.)
+- **Works even without the AI.** If Ollama isn't running, you still get the best matching lines, quoted exactly with their sources. (From David's version.)
 - **The shield**: if a file hides instructions aimed at the AI (white text, a hidden sheet, invisible characters, a sneaky comment), code finds them and the AI never sees them. You get a yellow **Blocked to keep your notes safe** box saying what was blocked and why, and you can read it yourself.
 - **"Did you mean one of these?"**: when Codicilix isn't sure, it shows the photos and screenshots from your folders that look closest. You look, and if one is right, click **Yes, use this** and it answers again reading that photo first.
 - **Folders & access**: switch folders on or off, and choose which kinds of things may be read: notes, action lists, calendars, saved links, and screenshots & photos.
@@ -145,7 +152,7 @@ The app treats **5 January 2027** as "today" (`demo_today` in `config.json`).
 python3 -B -m unittest discover tests
 ```
 
-62 tests. They use a fake AI model, so they run anywhere.
+67 tests. They use a fake AI model, so they run anywhere.
 
 ## Project layout
 

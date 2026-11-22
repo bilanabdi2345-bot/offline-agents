@@ -231,6 +231,7 @@
   .pictile span { font-size: 0.82em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .maybe-pic { display: flex; flex-direction: column; gap: 6px; width: 170px; }
   .small-btn { padding: 6px 10px; font-size: 0.85em; }
+  .box.changed { border: 1px solid var(--a); background: color-mix(in srgb, var(--a) 8%, var(--panel)); }
   .box.shield { border: 1px solid #e0a100; background: color-mix(in srgb, #ffd54a 14%, var(--panel)); }
   .box.shield pre { white-space: pre-wrap; max-height: 220px; overflow: auto; }
   .viewer { position: fixed; inset: 0; z-index: 50; background: rgba(10,10,10,.72); display: flex; align-items: center; justify-content: center; padding: 24px; }
@@ -296,6 +297,8 @@
           <div class="card quick">
             <h2>Quick asks</h2>
             <button data-q="What was I in the middle of before the holidays?"><span class="ico">🎄</span>Before the holidays</button>
+            <button data-q="What has changed?"><span class="ico">🔁</span>What has changed?</button>
+            <button data-q="What do I owe people?"><span class="ico">🤝</span>What do I owe people?</button>
             <button data-q="What actions are overdue?"><span class="ico">⏰</span>What's overdue?</button>
             <button data-q="When does the pilot start?"><span class="ico">🚀</span>When does the pilot start?</button>
             <button data-q="What did Megan cover in the intern training?"><span class="ico">🎓</span>Megan's training</button>
@@ -906,6 +909,10 @@ async function ask(question, opts = {}) {
     if (ev.type === "start") {
       ctx = ev;
       const secs = ((performance.now() - t0) / 1000).toFixed(2);
+      if (ev.changes && ev.changes.length) {
+        q(".codebox").insertAdjacentHTML("afterbegin", `<div class="box changed"><b>🔁 What changed · found by code</b>
+          ${ev.changes.map(c => `<div style="margin-top:6px">${esc(c.text)} ${c.refs.map(n => `<button class="cite" data-n="${n}">${n}</button>`).join("")}</div>`).join("")}</div>`);
+      }
       if (ev.blocked && ev.blocked.length) {
         q(".codebox").insertAdjacentHTML("afterbegin", `<div class="box shield"><b>🛡️ Blocked to keep your notes safe · found by code</b>
           ${ev.blocked.map(b => `<div style="margin-top:6px">I didn't let the AI read <span style="font-weight:650">${esc(b.file.split("/").pop())}</span>${b.lines ? ` (lines ${esc(b.lines)})` : ""}, because it ${esc(b.why.join(", and "))}.

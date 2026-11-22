@@ -10,7 +10,7 @@ import re
 import time
 import urllib.request
 
-from . import notes, search
+from . import changes, notes, search
 
 OLLAMA_URL = "http://127.0.0.1:11434"
 FAKE_LLM = os.environ.get("FAKE_LLM") == "1"
@@ -325,7 +325,7 @@ def confidence(picked, cited, day):
     used = [picked[i - 1] for i in cited if 0 < i <= len(picked)]
     if not used:
         return "low", "The answer doesn't point to any of your notes, so treat it with care."
-    newest = max(c.date for c in used if c.date)
+    newest = max((c.date for c in used if c.date and c.date <= day), default=day)  # upcoming events aren't "newest"
     age = (day - newest).days
     warn = any(c.flags for c in used)
     if len(used) >= 2 and age <= 30 and not warn:
@@ -336,6 +336,42 @@ def confidence(picked, cited, day):
     if age > 30:
         return "medium", f"The newest note used is {age} days old. Things may have changed since."
     return "medium", "Based on only one note."
+
+
+CHANGED_RX = re.compile(r"\bwhat('?s| has| have)? (changed|moved)\b|\bwhat changed\b|\bany changes\b|\bchanged since\b", re.I)
+OWE_RX = re.compile(r"\bwhat do i owe\b|\bi owe\b|\bmy promises\b|\bwhat (have|did) i promise|\bwhat am i on the hook\b|\bmy open actions\b", re.I)
+
+
+def _owe_text(line):
+    if line.startswith("Action item"):
+        f = dict(p.split(": ", 1) for p in line.replace("Action item — ", "").split("; ") if ": " in p)
+        try:
+            due = notes.nice_date(dt.date.fromisoformat(f.get("due", "")))
+        except ValueError:
+            due = f.get("due", "?")
+        return f"{f.get('action', line)} (due {due})"
+    return line.lstrip("-•* ").strip()
+
+
+def quote_answer(ctx):
+    """Without the AI: the best line from each of the top notes, quoted as written."""
+    words = set(search.tokens(ctx["question"]))
+    out = []
+    for s in ctx["sources"][:4]:
+        lines = [l.strip(" -•*#") for l in s["text"].splitlines() if l.strip(" -•*#") and not l.startswith("[Text read")]
+        if not lines:
+            continue
+        best = max(lines, key=lambda l: len(words & set(search.tokens(l))))
+        out.append(f"- \u201c{best[:220]}\u201d ({s['file'].split('/')[-1]}) [{s['n']}]")
+    return "\n".join(out) or "I found notes, but no single line to quote."
+
+
+def code_done(ctx, why):
+    """An answer written by code alone: every line is quoted from a note."""
+    done = finish(ctx, ctx["code_answer"])
+    done["confidence_reason"] = why
+    done["timing"] = f"reading your notes {ctx['_read_seconds']}s, no AI needed"
+    return done
 
 
 def pasted_chunk(paste_id, name, text, day):
@@ -402,7 +438,27 @@ def prepare(question, compartments, model=None, pasted=None, focus=None):
 
     info = {}
     meeting = re.search(r"meeting '(.+?)'", question)
-    if meeting:
+    safe = [c for c in chunks if "looks like instructions" not in c.flags]
+    stories = changes.what_changed(safe, day)
+    code_mode = None
+    if not meeting and not pasted:
+        if CHANGED_RX.search(question):
+            code_mode = "changed"
+        elif OWE_RX.search(question):
+            code_mode = "owe"
+    owed = changes.what_i_owe(safe, day) if code_mode == "owe" else []
+    if code_mode == "changed":
+        picked, missing, extra = [], [], []
+        for s in stories:
+            for c in [x[1] for x in s["seq"]] + [x[0] for x in s["still_old"]] + s["agree"]:
+                if c not in picked:
+                    picked.append(c)
+    elif code_mode == "owe":
+        picked, missing, extra = [], [], []
+        for c, *_ in owed:
+            if c not in picked:
+                picked.append(c)
+    elif meeting:
         picked, missing, extra = meeting_sources(meeting.group(1), question, chunks, day, info)
     else:
         extra = related_words(question, model) if model else []
@@ -427,7 +483,27 @@ def prepare(question, compartments, model=None, pasted=None, focus=None):
         d["n"] = n
         d["used"] = False
         sources.append(d)
+    num = {id(c): n for n, c in enumerate(picked, start=1)}
+
+    def cite(*cs):
+        return " ".join(f"[{num[id(c)]}]" for c in dict.fromkeys(cs) if id(c) in num)
+
+    # Things that changed across the notes these sources come from (found by code).
+    picked_files = {c.rel for c in picked}
+    change_lines = [{"text": changes.describe_change(s),
+                     "refs": [num[id(c)] for c in [x[1] for x in s["seq"]] + [x[0] for x in s["still_old"]] if id(c) in num]}
+                    for s in stories if code_mode is None and picked_files & s["files"]][:3]
+    code_answer = None
+    if code_mode == "changed":
+        code_answer = "\n".join(f"- {changes.describe_change(s)} {cite(*[x[1] for x in s['seq']], *[x[0] for x in s['still_old']])}"
+                                 for s in stories) or "I didn't find anything that changed between your notes."
+        change_lines = []  # the answer itself is the list
+    elif code_mode == "owe":
+        code_answer = "\n".join(f"- {'OVERDUE: ' if od else ''}{_owe_text(line)} {cite(c)}" for c, n, line, od in owed) \
+            or "I didn't find any open promises of yours."
     return {
+        "changes": change_lines,
+        "code_answer": code_answer,
         "question": question,
         "today": day.isoformat(),
         "files_read": files_read,

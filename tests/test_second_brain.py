@@ -396,7 +396,7 @@ class Documents(unittest.TestCase):
         self.assertIn("Sheet: Training", t)
 
     def test_pdf_text_sticky_notes_and_highlights(self):
-        t = self.text("2026-12-14 Pilot data handling - Sophie's markup.pdf")
+        t = self.text("2026-12-14 Pilot data handling - Sophie's markup.pdf").replace("\u2019", "'")
         self.assertIn("Pilot data is deleted 30 days after the pilot ends", t)
         self.assertIn("[Sticky note by Sophie, 14 Dec 2026", t)
         self.assertIn("Is 30 days too long? Ask Mehreen.", t)
@@ -405,9 +405,11 @@ class Documents(unittest.TestCase):
         from secondbrain import docs
         import glob
         p = glob.glob(os.path.join(ROOT, "sample-notes", "*", "*.pdf"))[0]
-        with mock.patch.object(docs.shutil, "which", return_value=None):
+        # Pretend there's no Mac PDF helper and no pdftotext: the built-in reader must cope.
+        with mock.patch.object(docs.shutil, "which", return_value=None), \
+                mock.patch.object(docs, "PDF_HELPER", "/nonexistent/second-brain-pdf"):
             t = docs.extract(p)
-        self.assertIn("5. Xinyue's PDF upload fix must be in before the pilot.", t)
+        self.assertIn("5. Xinyue's PDF upload fix must be in before the pilot.", t.replace("\u2019", "'"))
         self.assertIn("Can we start without sign-off?", t)
 
     def test_found_in_answers(self):
@@ -470,6 +472,42 @@ class Shield(unittest.TestCase):
                 z.writestr(n, data)
         from secondbrain import docs
         self.assertIn("Sheet: Training (hidden sheet)", docs.extract(p))
+
+
+class FromDavidsVersion(unittest.TestCase):
+    """Ideas brought in from David's version: what changed, what I owe, and
+    answers that still work without the AI. All done by code."""
+
+    def test_what_changed_finds_the_pilot_move_and_the_stale_draft(self):
+        from secondbrain import changes
+        chunks, _, _ = comps().read_all(DAY)
+        found = [changes.describe_change(s) for s in changes.what_changed(chunks, DAY)]
+        self.assertTrue(any(f.startswith("Pilot: 12 Jan") and "→ 26 Jan" in f for f in found), found)
+        self.assertTrue(any("handover for Mehreen (draft) still says 12 Jan" in f for f in found), found)
+        self.assertEqual(len(found), 1, found)  # no false alarms in the sample notes
+
+    def test_what_has_changed_is_answered_by_code(self):
+        ctx = brain.prepare("What has changed?", comps())
+        self.assertIn("Pilot: 12 Jan", ctx["code_answer"])
+        self.assertIsNone(ctx["prompt"] if ctx["code_answer"] is None else None)
+        done = brain.code_done(ctx, "x")
+        self.assertTrue(done["cited"])
+
+    def test_what_i_owe(self):
+        ctx = brain.prepare("What do I owe people?", comps())
+        self.assertIn("OVERDUE: Submit standards review form (due 18 Dec 2026)", ctx["code_answer"])
+        self.assertIn("Decide who owns the eval tests", ctx["code_answer"])
+
+    def test_changes_shown_next_to_normal_answers(self):
+        ctx = brain.prepare("When does the pilot start?", comps())
+        self.assertTrue(any(c["text"].startswith("Pilot:") for c in ctx["changes"]))
+        self.assertIsNone(ctx["code_answer"])
+
+    def test_without_the_ai_lines_are_quoted(self):
+        ctx = brain.prepare("When does the pilot start?", comps())
+        text = brain.quote_answer(ctx)
+        self.assertIn("26 Jan", text)
+        self.assertRegex(text, r"\[\d+\]")
 
 
 class Server(unittest.TestCase):

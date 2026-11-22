@@ -267,14 +267,21 @@ def make_handler(app, port):
                 emit({"type": "start", **brain.public(ctx)})
                 if not ctx["found"]:
                     return emit({"type": "done", **brain.not_found(ctx)})
+                if ctx.get("code_answer"):
+                    done = brain.code_done(ctx, "Found by code and quoted from your notes. No AI was used, so nothing was made up.")
+                    return emit({"type": "done", **done, "sources": ctx["sources"]})
                 text = ""
                 for piece in brain.ask_model_stream(ctx["prompt"], app.model, app.keep_alive):
                     text += piece
                     emit({"type": "token", "text": piece})
                 done = brain.finish(ctx, text)
                 emit({"type": "done", **done, "sources": ctx["sources"]})
-            except urllib.error.URLError:
-                emit({"type": "error", "error": "The AI model isn't running. Open the Ollama app, then try again."})
+            except (urllib.error.URLError, ConnectionError, TimeoutError):
+                # No AI? Still useful: show the best matching lines, found and quoted by code.
+                ctx["code_answer"] = brain.quote_answer(ctx)
+                done = brain.code_done(ctx, "The AI isn't running (open Ollama for a written answer), so these lines "
+                                            "were found by code and quoted exactly from your notes.")
+                emit({"type": "done", **done, "sources": ctx["sources"], "no_ai": True})
             except (BrokenPipeError, ConnectionResetError):
                 pass  # the window was closed mid-answer
 

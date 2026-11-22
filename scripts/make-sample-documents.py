@@ -93,7 +93,7 @@ def make_trap_word(path):
     paras = [run("Prototype feedback form", bold=True),
              run("From: external reviewer (forwarded by email)"),
              run("Feedback on the Medical Insights prototype: search is fast and the answers are easy to check.") + hidden,
-             run("Would like to see the pilot results in February.")]
+             run("Would like to see the results in February.")]
     body = "".join(f"<w:p>{p}</w:p>" for p in paras)
     with zipfile.ZipFile(path, "w", zipfile.ZIP_DEFLATED) as z:
         z.writestr("[Content_Types].xml", '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'

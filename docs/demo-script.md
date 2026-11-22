@@ -49,6 +49,12 @@ intern check-in: it suggests technical questions, to see what the training taugh
 January. But at the demo on 10 December it moved to 26 January. It tells me the
 newest answer, and warns me the draft is out of date. That's an email I'd have sent wrong."
 
+**Point at** the green "🔁 What changed · found by code" box.
+
+**Say:** "This box isn't the AI. Plain code compared every note, the Word plan's
+tracked change, and the PDF, and found the date moved. It even tells me which
+file still has the old date."
+
 **Optional extra (15 seconds):** take a photo of a handwritten note on your phone,
 AirDrop it, then drag it into the chat and ask about it. Click the 🔍 button.
 
