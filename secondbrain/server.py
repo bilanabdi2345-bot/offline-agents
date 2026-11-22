@@ -81,7 +81,8 @@ def make_handler(app, port):
                 return self.send(200, {
                     "today": day.isoformat(),
                     "today_label": f"{day.strftime('%a')} {day.day} {day.strftime('%b %Y')}",
-                    "demo_date": bool(app.config.get("demo_today")),
+                    "demo_date": bool(app.config.get("demo_today")) and os.environ.get("TODAY") == app.config.get("demo_today"),
+                    "demo_available": bool(app.config.get("demo_today")),
                     "compartments": app.compartments.describe(day),
                     "model": app.model,
                     "model_status": brain.model_status(app.model),
@@ -149,6 +150,19 @@ def make_handler(app, port):
 
             if self.path == "/api/pick":
                 return self.send(*pick(data.get("what")))
+
+            if self.path == "/api/demo":
+                on = bool(data.get("on"))
+                demo_day = app.config.get("demo_today")
+                if on and demo_day:
+                    os.environ["TODAY"] = demo_day
+                else:
+                    os.environ.pop("TODAY", None)
+                # The sample folders follow demo mode; folders you added stay as they are.
+                for c in app.compartments.items:
+                    if c.get("sample"):
+                        c["enabled"] = on and c.get("sample_default", True)
+                return self.send(200, {"ok": True, "demo": on})
 
             if self.path == "/api/kind":
                 ok = app.compartments.set_kind(data.get("kind"), data.get("enabled"))

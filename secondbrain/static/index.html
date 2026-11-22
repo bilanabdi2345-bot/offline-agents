@@ -44,6 +44,7 @@
   :root[data-easy="1"] { --font: Verdana, "Trebuchet MS", sans-serif; --ls: 0.04em; --ws: 0.14em; --lh: 1.9; }
 
   * { box-sizing: border-box; }
+  [hidden] { display: none !important; }
   html, body { margin: 0; height: 100%; }
   body { background: var(--bg); color: var(--text); font: var(--fs)/var(--lh) var(--font);
     letter-spacing: var(--ls); word-spacing: var(--ws); -webkit-font-smoothing: antialiased; }
@@ -287,6 +288,13 @@
     <section class="page" id="page-folders">
       <div class="grid2">
         <div class="stack">
+          <div class="card" id="demoCard" hidden>
+            <div style="display:flex;justify-content:space-between;align-items:center;gap:14px">
+              <div><h2 style="margin:0">Demo mode</h2>
+                <div class="muted small" id="demoText"></div></div>
+              <label class="switch"><input type="checkbox" id="demoSwitch" aria-label="Demo mode"><span></span></label>
+            </div>
+          </div>
           <div class="card">
             <h2>Folders I can see</h2>
             <p class="muted small" style="margin-top:0">Switched off means never opened, not just hidden. Change your mind any time.</p>
@@ -593,7 +601,13 @@ $("greeting").textContent = h < 12 ? "Good morning." : h < 18 ? "Good afternoon.
 let nextMeeting = null;
 async function loadState() {
   const s = await api("/api/state");
-  if (s.demo_date) { $("todayPill").hidden = false; $("todayPill").textContent = `📅 Today: ${s.today_label} (demo date)`; }
+  $("todayPill").hidden = !s.demo_date;
+  if (s.demo_date) $("todayPill").textContent = `📅 Today: ${s.today_label} (demo date)`;
+  $("demoCard").hidden = !s.demo_available;
+  $("demoSwitch").checked = s.demo_date;
+  $("demoText").textContent = s.demo_date
+    ? "On: using the sample notes, and today is 5 Jan 2027. Turn off to use your own notes and the real date."
+    : "Off: using your own notes and today's real date. Add your folders below.";
   const ms = s.model_status, pill = $("modelPill");
   if (!ms.running) { pill.className = "pill bad"; pill.textContent = "AI model not running · open Ollama"; }
   else if (!ms.model_ready) { pill.className = "pill warn"; pill.textContent = `Model ${s.model} not downloaded`; }
@@ -874,6 +888,17 @@ async function restoreAdded() {
   saveAdded(keep);
 }
 
+$("demoSwitch").onchange = async () => {
+  await api("/api/demo", { on: $("demoSwitch").checked });
+  try { localStorage.setItem("sb-demo", $("demoSwitch").checked ? "on" : "off"); } catch {}
+  loadState();
+};
+// Keep the user's choice of demo mode after a restart.
+async function restoreDemo() {
+  let pref = null; try { pref = localStorage.getItem("sb-demo"); } catch {}
+  if (pref === "off") await api("/api/demo", { on: false });
+}
+
 /* ---------- Check-up ---------- */
 async function loadLive() {
   const t = await loadSession();
@@ -933,7 +958,7 @@ $("lsofBtn").onclick = async () => {
 if (!TOKEN) {
   document.querySelector("main").innerHTML = '<div class="page on"><div class="card" style="max-width:560px;margin:60px auto;text-align:center"><h2>This window has no key</h2><p class="muted">For your safety, Codicilix only talks to the window it opened itself. Please close this tab and open Codicilix from its app icon.</p></div></div>';
 } else {
-  restoreAdded().catch(() => {}).then(() => loadState().catch(() => {})); loadSession().catch(() => {});
+  restoreDemo().catch(() => {}).then(() => restoreAdded()).catch(() => {}).then(() => loadState().catch(() => {})); loadSession().catch(() => {});
   setInterval(() => loadState().catch(() => {}), 30000);
 }
 </script>

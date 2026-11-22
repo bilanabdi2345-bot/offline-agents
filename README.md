@@ -101,6 +101,10 @@ It opens http://127.0.0.1:8765 in your browser.
 
 ## Use your own notes
 
+Codicilix starts in **Demo mode** (the sample notes, with "today" set to 5 Jan 2027).
+To use it for real, go to **Folders & access** and switch **Demo mode** off: the sample
+folders switch off and the real date is used. Switch it back on any time for a demo.
+
 Go to **Folders & access** and click **Choose a folder…** or **Choose files…**.
 Your Mac's normal picker opens. Pick what you want, and it's added and switched on.
 Codicilix remembers where your notes are (never what's in them), so they're still
@@ -131,7 +135,7 @@ The app treats **5 January 2027** as "today" (`demo_today` in `config.json`).
 python3 -B -m unittest discover tests
 ```
 
-40 tests. They use a fake AI model, so they run anywhere.
+42 tests. They use a fake AI model, so they run anywhere.
 
 ## Project layout
 

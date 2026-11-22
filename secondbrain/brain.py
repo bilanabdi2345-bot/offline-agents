@@ -27,6 +27,10 @@ class Compartments:
 
     def __init__(self, items, kinds=None):
         self.items = [dict(i) for i in items]
+        for i in self.items:  # folders that come from config.json are the sample notes
+            if "sample-notes" in str(i.get("path") or ""):
+                i["sample"] = True
+                i["sample_default"] = i.get("enabled", True)
         # Which kinds of content may be read at all (the user's choice).
         self.kinds = set(kinds) if kinds is not None else set(notes.ALL_KINDS)
 
@@ -462,7 +466,8 @@ def _brief(picked, info, day):
 
 
 def _explain(ctx, used_files):
-    parts = [f"I read {len(ctx['files_read'])} files in: {ctx['_on']}."]
+    n = len(ctx['files_read'])
+    parts = [f"I read {n} file{'' if n == 1 else 's'} in: {ctx['_on']}."]
     skipped = ctx["skipped"]
     if skipped:
         parts.append(f"I did not open {', '.join(skipped)}, because you switched {'it' if len(skipped) == 1 else 'them'} off.")

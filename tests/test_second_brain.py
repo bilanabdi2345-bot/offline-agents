@@ -335,6 +335,7 @@ class Server(unittest.TestCase):
         cls.port = free_port()
         cls.url = f"http://127.0.0.1:{cls.port}"
         env = dict(os.environ, PORT=str(cls.port), SECOND_BRAIN_TOKEN="test-key", FAKE_PICK="")
+        env.pop("TODAY", None)  # let the app use demo_today from config.json
         cls.proc = subprocess.Popen(
             [sys.executable, "-B", "-m", "secondbrain", "--no-browser"], cwd=ROOT, env=env,
             stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
@@ -432,6 +433,18 @@ class Server(unittest.TestCase):
         except urllib.error.HTTPError as e:
             bad = json.loads(e.read())
         self.assertIn("Choose a folder", bad["error"])
+
+    def test_demo_mode_switch(self):
+        self.call("/api/demo", {"on": False})
+        s = self.call("/api/state")
+        self.assertFalse(s["demo_date"])
+        self.assertTrue(all(not c["enabled"] for c in s["compartments"] if c["name"] in ("Team", "Projects", "Personal")))
+        self.call("/api/demo", {"on": True})
+        s = self.call("/api/state")
+        self.assertTrue(s["demo_date"])
+        on = {c["name"]: c["enabled"] for c in s["compartments"]}
+        self.assertTrue(on["Team"] and on["Projects"])
+        self.assertFalse(on["Personal"])  # back to how config.json set it
 
     def test_checkup(self):
         r = self.call("/api/checkup", {})
