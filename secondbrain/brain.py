@@ -43,7 +43,7 @@ class Compartments:
             if not comp["enabled"]:
                 skipped.append(comp["name"])
                 continue
-            c, f = notes.read_compartment(comp["name"], comp["path"], day, self.kinds)
+            c, f = notes.read_compartment(comp["name"], comp.get("path"), day, self.kinds, comp.get("files"))
             chunks += c
             files += f
         return chunks, files, skipped
@@ -58,14 +58,37 @@ class Compartments:
                 return True
         return False
 
+    def _unique(self, name):
+        name = re.sub(r"[^\w\- ]", "", name).strip()[:40] or "Folder"
+        base, n = name, 2
+        while any(i["name"] == name for i in self.items):
+            name = f"{base} ({n})"
+            n += 1
+        return name
+
     def add(self, name, path):
-        name = re.sub(r"[^\w\- ]", "", name).strip() or "Folder"
-        if any(i["name"] == name for i in self.items):
-            return False, "A compartment with that name already exists."
-        if not os.path.isdir(os.path.expanduser(path)):
-            return False, "That folder doesn't exist."
-        self.items.append({"name": name, "path": path, "enabled": True})
-        return True, ""
+        path = os.path.expanduser((path or "").strip().strip("'\""))
+        if not os.path.isdir(path):
+            return False, "I couldn't find that folder. Try the Choose a folder button instead."
+        if any(i.get("path") == path for i in self.items):
+            return False, "That folder is already added."
+        name = self._unique(name or os.path.basename(path.rstrip("/")))
+        self.items.append({"name": name, "path": path, "enabled": True, "added": True})
+        return True, name
+
+    def add_files(self, name, files):
+        files = [os.path.expanduser(f) for f in files if f and os.path.isfile(os.path.expanduser(f))]
+        if not files:
+            return False, "None of those files could be found."
+        name = self._unique(name or (os.path.splitext(os.path.basename(files[0]))[0] if len(files) == 1 else f"{len(files)} files"))
+        self.items.append({"name": name, "path": None, "files": files, "enabled": True, "added": True})
+        return True, name
+
+    def paths(self):
+        out = []
+        for i in self.items:
+            out += i.get("files") or ([i["path"]] if i.get("path") else [])
+        return out
 
     def remove(self, name):
         before = len(self.items)
@@ -76,13 +99,14 @@ class Compartments:
         out = []
         for i in self.items:
             counts = {}
-            for root, dirs, names in os.walk(os.path.expanduser(i["path"])):
-                dirs[:] = [d for d in dirs if not d.startswith(".")]
-                for n in names:
-                    k = notes.KINDS.get(os.path.splitext(n)[1].lower())
-                    if k and not n.startswith("."):
-                        counts[k] = counts.get(k, 0) + 1
-            out.append({**i, "files": sum(counts.values()), "kinds": counts})
+            for n, _, _ in notes._candidates(i["name"], i.get("path"), i.get("files")):
+                k = notes.KINDS.get(os.path.splitext(n)[1].lower())
+                if k and not n.startswith("."):
+                    counts[k] = counts.get(k, 0) + 1
+            shown = {k: v for k, v in i.items() if k != "files"}
+            shown["location"] = i.get("path") or (f"{len(i['files'])} chosen file(s)" if i.get("files") else "")
+            shown["file_list"] = i.get("files") or []
+            out.append({**shown, "files": sum(counts.values()), "kinds": counts})
         return out
 
 

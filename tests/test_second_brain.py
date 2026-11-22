@@ -295,7 +295,7 @@ class Server(unittest.TestCase):
     def setUpClass(cls):
         cls.port = free_port()
         cls.url = f"http://127.0.0.1:{cls.port}"
-        env = dict(os.environ, PORT=str(cls.port), SECOND_BRAIN_TOKEN="test-key")
+        env = dict(os.environ, PORT=str(cls.port), SECOND_BRAIN_TOKEN="test-key", FAKE_PICK="")
         cls.proc = subprocess.Popen(
             [sys.executable, "-B", "-m", "secondbrain", "--no-browser"], cwd=ROOT, env=env,
             stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
@@ -379,6 +379,20 @@ class Server(unittest.TestCase):
         self.assertIn("Forest", [t["name"] for t in r["themes"]])
         with self.assertRaises(urllib.error.HTTPError):
             self.call("/api/theme-check", {"name": "bad", "colors": {}})
+
+    def test_pick_and_add_files_and_folder(self):
+        files = os.path.join(SAMPLE, "Personal", "reorg thoughts.txt")
+        r = self.call("/api/compartment", {"action": "add_files", "files": [files]})
+        self.assertTrue(r["ok"])
+        q = self.call("/api/ask", {"question": "reorg"})
+        self.assertTrue(any("reorg thoughts.txt" in f for f in q["files_read"]))
+        self.call("/api/compartment", {"action": "remove", "name": r["name"]})
+        bad = None
+        try:
+            self.call("/api/compartment", {"action": "add", "path": "/no/such/folder"})
+        except urllib.error.HTTPError as e:
+            bad = json.loads(e.read())
+        self.assertIn("Choose a folder", bad["error"])
 
     def test_checkup(self):
         r = self.call("/api/checkup", {})

@@ -225,24 +225,39 @@ def _chunks_from_link(text, rel, ext, base):
     return [base(f"Saved link: {title} — {url}", 1, 1)]
 
 
-def read_compartment(name, folder, today, kinds=None):
-    """Read every supported note in one folder. Returns (chunks, files_read).
-    'kinds' limits which kinds of content may be read (the user's choice)."""
-    chunks, files, images = [], [], []
-    folder = os.path.expanduser(folder)
+def _candidates(name, folder=None, files=None):
+    """Every file a compartment covers: a whole folder, or a list of single files."""
+    if files:
+        for path in files:
+            path = os.path.expanduser(path)
+            if os.path.isfile(path):
+                yield os.path.basename(path), path, os.path.join(name, os.path.basename(path))
+        return
+    folder = os.path.expanduser(folder or "")
     if not os.path.isdir(folder):
-        return chunks, files
+        return
     for root, dirs, names in os.walk(folder):
         dirs[:] = sorted(d for d in dirs if not d.startswith("."))
         for fname in sorted(names):
+            path = os.path.join(root, fname)
+            yield fname, path, os.path.join(name, os.path.relpath(path, folder))
+
+
+def read_compartment(name, folder, today, kinds=None, files=None):
+    """Read every supported note in one folder (or in a list of single files).
+    Returns (chunks, files_read). 'kinds' limits which kinds of content may be
+    read (the user's choice)."""
+    chunks, files_read, images = [], [], []
+    files_list = files
+    files = files_read
+    for fname, path, rel in _candidates(name, folder, files_list):
+        if True:
             ext = os.path.splitext(fname)[1].lower()
             if fname.startswith(".") or ext not in KINDS:
                 continue
             kind = KINDS[ext]
             if kinds is not None and kind not in kinds:
                 continue
-            path = os.path.join(root, fname)
-            rel = os.path.join(name, os.path.relpath(path, folder))
             mtime = dt.date.fromtimestamp(os.path.getmtime(path))
 
             if kind == "screenshot or photo":
@@ -333,7 +348,8 @@ def fingerprint(folders):
     count = 0
     for folder in folders:
         folder = os.path.expanduser(folder)
-        for root, dirs, names in os.walk(folder):
+        walk = [(os.path.dirname(folder), [], [os.path.basename(folder)])] if os.path.isfile(folder) else os.walk(folder)
+        for root, dirs, names in walk:
             dirs.sort()
             for fname in sorted(names):
                 path = os.path.join(root, fname)

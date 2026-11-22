@@ -6,6 +6,8 @@ It only listens on 127.0.0.1, so only this laptop can open it.
 import hmac
 import json
 import os
+import subprocess
+import sys
 import urllib.error
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
@@ -22,7 +24,7 @@ class App:
         self.model = config.get("model", "llama3.2:3b")
         self.keep_alive = str(config.get("model_keep_alive", "0"))
         self.compartments = brain.Compartments(config["compartments"], config.get("kinds"))
-        self.seal = trust.NotesSeal(i["path"] for i in self.compartments.items)
+        self.seal = trust.NotesSeal(self.compartments.paths())
         self.session_reads = []  # files read this session, in memory only
 
     def forget(self):
@@ -126,11 +128,14 @@ def make_handler(app, port):
                 if action == "toggle":
                     ok = app.compartments.set(data.get("name"), data.get("enabled"))
                     return self.send(200 if ok else 404, {"ok": ok})
-                if action == "add":
-                    ok, msg = app.compartments.add(data.get("name", ""), data.get("path", ""))
+                if action in ("add", "add_files"):
+                    if action == "add":
+                        ok, msg = app.compartments.add(data.get("name", ""), data.get("path", ""))
+                    else:
+                        ok, msg = app.compartments.add_files(data.get("name", ""), data.get("files") or [])
                     if ok:
-                        app.seal = trust.NotesSeal(i["path"] for i in app.compartments.items)
-                    return self.send(200 if ok else 400, {"ok": ok, "error": msg})
+                        app.seal = trust.NotesSeal(app.compartments.paths())
+                    return self.send(200 if ok else 400, {"ok": ok, "name": msg if ok else None, "error": None if ok else msg})
                 if action == "remove":
                     ok = app.compartments.remove(data.get("name"))
                     return self.send(200 if ok else 404, {"ok": ok})
@@ -139,6 +144,9 @@ def make_handler(app, port):
             if self.path == "/api/theme-check":
                 theme, err = themes.validate(data)
                 return self.send(200 if theme else 400, {"theme": theme, "error": err})
+
+            if self.path == "/api/pick":
+                return self.send(*pick(data.get("what")))
 
             if self.path == "/api/kind":
                 ok = app.compartments.set_kind(data.get("kind"), data.get("enabled"))
@@ -192,6 +200,36 @@ def make_handler(app, port):
                 pass  # the window was closed mid-answer
 
     return Handler
+
+
+PICK_SCRIPTS = {
+    "folder": ['set f to choose folder with prompt "Choose a folder of notes for Codicilix"',
+               "return POSIX path of f"],
+    "files": ['set fs to choose file with prompt "Choose notes, photos or screenshots for Codicilix" with multiple selections allowed',
+              'set out to ""', "repeat with f in fs", "set out to out & POSIX path of f & linefeed", "end repeat",
+              "return out"],
+}
+
+
+def pick(what):
+    """Open the Mac's own folder or file picker, so nobody has to type a path."""
+    if what not in PICK_SCRIPTS:
+        return 400, {"error": "unknown choice"}
+    fake = os.environ.get("FAKE_PICK")
+    if fake is not None:  # used by the tests
+        return 200, {"paths": [p for p in fake.split("|") if p]}
+    if sys.platform != "darwin":
+        return 400, {"error": "The picker only works on a Mac. Type the folder path instead."}
+    args = ["osascript"]
+    for line in PICK_SCRIPTS[what]:
+        args += ["-e", line]
+    try:
+        r = subprocess.run(args, capture_output=True, text=True, timeout=600)
+    except subprocess.TimeoutExpired:
+        return 400, {"error": "The picker was open too long."}
+    if r.returncode != 0:
+        return 200, {"paths": [], "cancelled": True}
+    return 200, {"paths": [p for p in r.stdout.splitlines() if p.strip()]}
 
 
 def serve(config, port, token):

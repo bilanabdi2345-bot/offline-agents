@@ -93,13 +93,11 @@ It opens http://127.0.0.1:8765 in your browser.
 
 ## Use your own notes
 
-Edit `config.json`. Add a compartment with a name and a folder path:
+Go to **Folders & access** and click **Choose a folder…** or **Choose files…**.
+Your Mac's normal picker opens. Pick what you want, and it's added and switched on.
+Codicilix remembers where your notes are (never what's in them), so they're still
+there next time. **Remove** stops using them; your files stay exactly where they are.
 
-```json
-{ "name": "Meetings", "path": "~/Documents/Meeting notes", "enabled": true }
-```
-
-Or click **+ Add a folder** in the app (this lasts until you close it).
 It reads `.md`, `.txt`, `.csv` action lists, `.ics` calendar files, saved links (`.webloc`, `.url`), and screenshots and photos (`.png`, `.jpg`, `.heic`).
 
 ## Sample notes
@@ -117,7 +115,7 @@ private folder.
 python3 -B -m unittest discover tests
 ```
 
-39 tests. They use a fake AI model, so they run anywhere.
+40 tests. They use a fake AI model, so they run anywhere.
 
 ## Project layout
 
