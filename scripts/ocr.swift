@@ -30,7 +30,7 @@ for path in CommandLine.arguments.dropFirst() {
         results.append(["path": path, "text": "", "error": "\(error)"])
         continue
     }
-    let observations = (request.results as? [VNRecognizedTextObservation]) ?? []
+    let observations = request.results ?? []
     // Top of the image first, then left to right.
     let sorted = observations.sorted {
         let dy = $0.boundingBox.midY - $1.boundingBox.midY

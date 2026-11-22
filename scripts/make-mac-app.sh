@@ -55,13 +55,16 @@ if command -v sips >/dev/null && command -v iconutil >/dev/null; then
   iconutil -c icns "$SET" -o "$APP/Contents/Resources/icon.icns"
 fi
 # A double-click "Update Codicilix" button, next to the app.
-cat > "$HOME/Applications/Update Codicilix.command" <<UPD
+# Written to a new file and then swapped in, so it is safe to rebuild while it is running.
+CMD="$HOME/Applications/Update Codicilix.command"
+cat > "$CMD.new" <<UPD
 #!/bin/bash
 /bin/bash "$PROJECT/scripts/update.sh"
 echo
 read -n 1 -s -r -p "Press any key to close this window."
 UPD
-chmod +x "$HOME/Applications/Update Codicilix.command"
+chmod +x "$CMD.new"
+mv -f "$CMD.new" "$CMD"
 
 echo "Done: $APP"
 if [ -z "$QUIET" ]; then
