@@ -349,7 +349,45 @@ def pasted_chunk(paste_id, name, text, day):
     return c
 
 
-def prepare(question, compartments, model=None, pasted=None):
+def maybe_pictures(question, chunks, day, limit=3):
+    """Photos and screenshots that might be what the question is about.
+    Handwriting is often read a bit wrong, so words only need to look alike
+    ('Mehren' still matches 'Mehreen'). Used to ask 'Did you mean one of these?'"""
+    import difflib
+    want = [w for w in search.tokens(question) if len(w) >= 4 and w not in search.STOP]
+    best = {}
+    for c in chunks:
+        if c.kind != "screenshot or photo" or not c.path:
+            continue
+        have = set(search.tokens(c.text))
+        hits = [w for w in want if w in have or difflib.get_close_matches(w, have, n=1, cutoff=0.75)]
+        if not hits:
+            continue
+        score = len(set(hits))
+        if c.rel not in best or score > best[c.rel]["score"]:
+            best[c.rel] = {"file": c.rel, "compartment": c.compartment, "score": score,
+                           "date_label": notes.nice_date(c.date) if c.date else "date unknown",
+                           "matched": sorted(set(hits))}
+    ranked = sorted(best.values(), key=lambda x: -x["score"])[:limit]
+    for r in ranked:
+        r.pop("score")
+    return ranked
+
+
+def chosen_picture(rel, chunks):
+    """The person said 'yes, this picture': read it first."""
+    found = [c for c in chunks if c.rel == rel and c.kind == "screenshot or photo"]
+    out = []
+    for c in found:
+        n = notes.Chunk(c.compartment, c.path, c.rel, c.kind,
+                        "[PICTURE YOU CHOSE. Read this first.]\n" + c.text,
+                        c.line_start, c.line_end, c.date, c.date_source)
+        n.flags = list(c.flags)
+        out.append(n)
+    return out
+
+
+def prepare(question, compartments, model=None, pasted=None, focus=None):
     """Steps 1-3: read, search and explain. Fast (milliseconds), no AI needed.
     'pasted' is a list of pictures pasted into the chat (memory only); they are
     always included, first."""
@@ -359,6 +397,8 @@ def prepare(question, compartments, model=None, pasted=None):
     pasted = list(pasted or [])
 
     chunks, files_read, skipped = compartments.read_all(day)
+    if focus:
+        pasted = chosen_picture(focus, chunks) + pasted
 
     info = {}
     meeting = re.search(r"meeting '(.+?)'", question)
@@ -397,6 +437,7 @@ def prepare(question, compartments, model=None, pasted=None):
         "_on": on_names,
         "prompt": build_prompt(question, picked, missing, day, info.get("sections")) if picked else None,
         "brief": _brief(picked, info, day),
+        "maybe_pictures": [] if pasted else maybe_pictures(question, chunks, day),
         "_read_seconds": round(time.time() - started, 1),
     }
 

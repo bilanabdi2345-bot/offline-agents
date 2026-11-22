@@ -56,6 +56,11 @@ AirDrop it, then drag it into the chat and ask about it. Click the 🔍 button.
 words that match my question light up, and I can copy text straight off the photo.
 The picture was only ever in memory. It was never saved."
 
+**Or, if an answer comes back unsure:** point at "Did you mean one of these?"
+
+**Say:** "When it isn't sure, it doesn't guess. It shows me the photos that look
+closest, and I decide. I click 'Yes, use this' and it reads that page first."
+
 ## 4. Honest, and forgiving (25 seconds) · Trust and explainability
 **Click:** "Something not in my notes". "Nothing about next summer's budget, so it says so."
 

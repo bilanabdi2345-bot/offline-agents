@@ -251,7 +251,7 @@ def make_handler(app, port):
             pasted = self.read_pastes(data.get("images"))
             if not q and not pasted:
                 return self.send(400, {"error": "Type a question first."})
-            ctx = brain.prepare(q, app.compartments, app.model, pasted)
+            ctx = brain.prepare(q, app.compartments, app.model, pasted, data.get("focus"))
             app.session_reads.append({"question": ctx["question"],
                                       "files": ctx["files_read"] + [c.rel for c in pasted]})
             self.send_response(200)

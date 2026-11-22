@@ -223,6 +223,14 @@
   .clip { border: 0; background: transparent; font-size: 20px; cursor: pointer; padding: 4px 8px; border-radius: 10px; }
   .clip:hover { background: var(--sunk); }
   .composer.drag .row { outline: 2px dashed var(--a); outline-offset: 4px; }
+  .picrow { display: flex; gap: 12px; flex-wrap: wrap; margin-top: 8px; }
+  .pictile { display: flex; flex-direction: column; gap: 6px; padding: 6px; border: 1px solid var(--line); border-radius: 12px;
+    background: var(--panel); cursor: zoom-in; width: 170px; text-align: left; font: inherit; color: inherit; }
+  .pictile:hover { border-color: var(--a); }
+  .pictile img, .pictile .nopic { width: 100%; height: 110px; object-fit: contain; border-radius: 8px; background: var(--sunk); display: flex; align-items: center; justify-content: center; font-size: 28px; }
+  .pictile span { font-size: 0.82em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .maybe-pic { display: flex; flex-direction: column; gap: 6px; width: 170px; }
+  .small-btn { padding: 6px 10px; font-size: 0.85em; }
   .viewer { position: fixed; inset: 0; z-index: 50; background: rgba(10,10,10,.72); display: flex; align-items: center; justify-content: center; padding: 24px; }
   .viewer .panel { background: var(--panel); border-radius: 16px; max-width: min(1100px, 96vw); max-height: 94vh; display: flex; flex-direction: column; overflow: hidden; }
   .viewer .bar { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 12px 16px; border-bottom: 1px solid var(--line); flex-wrap: wrap; }
@@ -789,7 +797,16 @@ async function openViewer({ file, paste, name, terms }) {
     viewerText = layout.text || "";
     const norm = w => w.toLowerCase().replace(/[^a-z0-9]/g, "");
     const want = (terms || []).map(norm).filter(w => w.length >= 3);
-    const hit = w => { const n = norm(w); return n.length >= 3 && want.some(t => n === t || n.startsWith(t) || t.startsWith(n) && n.length >= 4); };
+    // Handwriting is often read slightly wrong, so close spellings count too ("Sprnt" for "sprint").
+    const alike = (a, b) => {
+      if (Math.abs(a.length - b.length) > 2 || Math.min(a.length, b.length) < 4) return false;
+      const d = Array.from({ length: a.length + 1 }, (_, i) => [i]);
+      for (let j = 1; j <= b.length; j++) d[0][j] = j;
+      for (let i = 1; i <= a.length; i++) for (let j = 1; j <= b.length; j++)
+        d[i][j] = Math.min(d[i - 1][j] + 1, d[i][j - 1] + 1, d[i - 1][j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1));
+      return d[a.length][b.length] <= (Math.max(a.length, b.length) >= 8 ? 2 : 1);
+    };
+    const hit = w => { const n = norm(w); return n.length >= 3 && want.some(t => n === t || n.startsWith(t) || t.startsWith(n) && n.length >= 4 || alike(n, t)); };
     const img = new Image();
     img.alt = name || "Photo";
     img.onload = () => {
@@ -800,7 +817,7 @@ async function openViewer({ file, paste, name, terms }) {
       $("viewerPic").insertAdjacentHTML("beforeend", layer);
       const n = words.filter(w => hit(w.t)).length;
       $("viewerFoot").textContent = words.length
-        ? `Select words on the photo to copy them.${n ? ` ${n} word${n > 1 ? "s" : ""} in yellow match your question.` : ""} Read on this laptop, never saved.`
+        ? `Select words on the photo to copy them.${n ? ` ${n === 1 ? "1 word in yellow matches" : n + " words in yellow match"} your question.` : ""} Read on this laptop, never saved.`
         : "No word positions for this picture, but you can still read it here. Read on this laptop, never saved.";
     };
     img.onerror = () => { $("viewerPic").innerHTML = `<p class="muted" style="line-height:1.6;padding:20px">This picture's format can't be shown in the window (HEIC photos, for example). Its text is below.</p><pre style="line-height:1.5;padding:0 20px 20px;white-space:pre-wrap">${esc(viewerText)}</pre>`; };
@@ -815,8 +832,25 @@ $("viewerCopy").onclick = async () => {
   try { await navigator.clipboard.writeText(viewerText); $("viewerCopy").textContent = "Copied ✓"; setTimeout(() => $("viewerCopy").textContent = "Copy all text", 1500); } catch {}
 };
 
+function picTile(src, file) {
+  const name = file.split("/").pop();
+  return `<button class="pictile" data-view-file="${esc(src.file || "")}" data-view-paste="${esc(src.paste || "")}" data-view-name="${esc(name)}" title="Look closer">
+    <img data-src="/api/image?${src.paste ? "paste=" + encodeURIComponent(src.paste) : "f=" + encodeURIComponent(src.file)}" alt="${esc(name)}"><span>🔍 ${esc(name)}</span></button>`;
+}
+async function loadTiles(root) {
+  for (const img of root.querySelectorAll("img[data-src]")) {
+    const url = img.dataset.src; img.removeAttribute("data-src");
+    try {
+      const r = await fetch(url, { headers: H });
+      if (!r.ok) throw 0;
+      img.src = URL.createObjectURL(await r.blob());
+      img.onerror = () => img.replaceWith(Object.assign(document.createElement("div"), { className: "nopic", textContent: "📷" }));
+    } catch { img.replaceWith(Object.assign(document.createElement("div"), { className: "nopic", textContent: "📷" })); }
+  }
+}
+
 let answerCount = 0;
-async function ask(question) {
+async function ask(question, opts = {}) {
   question = question.trim();
   const images = attachments.splice(0); renderThumbs();
   if (!question && !images.length) { $("q").focus(); return; }
@@ -827,6 +861,7 @@ async function ask(question) {
   you.className = "you";
   if (images.length) you.innerHTML = `<div class="thumbs">${images.map(im => `<div class="thumb"><img src="${im.data}" alt=""></div>`).join("")}</div>`;
   you.append(document.createTextNode(question || "What does this picture say?"));
+  if (opts.focus) you.insertAdjacentHTML("beforeend", `<div class="small" style="opacity:.85;margin-top:4px">📷 reading ${esc(opts.focus.split("/").pop())} first</div>`);
   const card = document.createElement("div");
   card.className = "card answer"; card.id = id;
   card.innerHTML = `
@@ -870,12 +905,15 @@ async function ask(question) {
         q(".body").innerHTML = `<span class="thinking"><span class="spin"></span>Found ${ev.sources.length} matching notes in ${secs}s. Writing…</span>`;
         showSources(ev.sources, false);
         const pics = ev.sources.filter(s => s.kind === "screenshot or photo").filter((x, i, a) => a.findIndex(y => y.file === x.file) === i);
-        if (pics.length) q(".codebox").insertAdjacentHTML("afterbegin", `<div class="box" style="display:flex;gap:8px;flex-wrap:wrap;align-items:center"><b style="margin:0">📷 Pictures used</b>${pics.map(s => `<button class="btn" data-view-file="${s.paste_id ? "" : esc(s.file)}" data-view-paste="${esc(s.paste_id || "")}" data-view-name="${esc(s.file.split("/").pop())}">🔍 ${esc(s.file.split("/").pop())}</button>`).join("")}</div>`);
+        if (pics.length) {
+          q(".codebox").insertAdjacentHTML("afterbegin", `<div class="box"><b>📷 Pictures used · click one to look closer</b><div class="picrow">${pics.map(s => picTile(s.paste_id ? { paste: s.paste_id } : { file: s.file }, s.file)).join("")}</div></div>`);
+          loadTiles(card);
+        }
         wireViews();
         if (ev.brief && ev.brief.new_since.length) q(".codebox").insertAdjacentHTML("beforeend",
           `<div class="box warn" style="background:var(--a-soft);color:var(--text);margin:0 0 10px"><b style="color:var(--a-text)">📌 ${ev.brief.last_meeting ? "New since your last meeting on " + esc(ev.brief.last_meeting) : "What you wrote about them recently"} · found by code</b>`
           + ev.brief.new_since.filter((x, i, a) => a.findIndex(y => y.file === x.file) === i).map(x => `<div>${KIND_ICON[x.kind] || "📝"} ${esc(x.file)} <span class="muted">· ${esc(x.date)}</span> <button class="cite" data-n="${x.n}">${x.n}</button></div>`).join("") + `</div>`);
-        if (ev.spelling && ev.spelling.length) q(".codebox").insertAdjacentHTML("beforeend", `<div class="box miss"><b>Spelling</b>I read ${ev.spelling.map(s => `“${esc(s.typed)}” as “${esc(s.read_as)}”`).join(", ")}.</div>`);
+        if (ev.spelling && ev.spelling.length) q(".codebox").insertAdjacentHTML("beforeend", `<div class="box miss"><b>Spelling</b>I matched ${ev.spelling.map(s => `“${esc(s.typed)}” to “${esc(s.read_as)}”`).join(", ")} in your notes.</div>`);
         if (ev.missing.length) q(".codebox").innerHTML += `<div class="box miss"><b>Checked by code</b>None of your notes mention: ${esc(ev.missing.join(", "))}. Anything about that is only loosely related.</div>`;
       }
     } else if (ev.type === "token") {
@@ -897,6 +935,22 @@ async function ask(question) {
       q(".whybox").innerHTML = also + `<div class="why"><b>Why:</b> ${esc(ev.confidence_reason)}</div><div class="why"><b>Where this came from:</b> ${esc(ev.explanation)}</div>`;
       if (ev.sources) showSources(ev.sources, false);
       q(".foot").textContent = `Answered in ${ev.seconds}s${ev.timing ? " (" + ev.timing + ")" : ""} · nothing saved`;
+      const unsure = ev.confidence === "none" || ev.confidence === "low" || /not in your notes/i.test(ev.answer || "");
+      const used = new Set((ev.sources || []).filter(s => s.used).map(s => s.file));
+      const maybe = ((ctx && ctx.maybe_pictures) || []).filter(m => !used.has(m.file));
+      if (unsure && maybe.length && !opts.focus) {
+        q(".whybox").insertAdjacentHTML("beforebegin", `<div class="box maybe"><b>🤔 Did you mean one of these?</b>
+          <div class="muted small" style="margin-bottom:10px">I'm not sure, so here are the photos and screenshots that look closest. Have a look and decide.</div>
+          <div class="picrow">${maybe.map(m => `<div class="maybe-pic">${picTile({ file: m.file }, m.file)}
+            <div class="muted small">${esc(m.date_label)} · looks like: ${esc(m.matched.join(", "))}</div>
+            <button class="btn primary small-btn" data-use="${esc(m.file)}">✓ Yes, use this</button></div>`).join("")}</div></div>`);
+        // Don't show the same picture twice: it's in "Did you mean" now.
+        const offered = new Set(maybe.map(m => m.file));
+        card.querySelectorAll(".codebox .pictile").forEach(tile => { if (offered.has(tile.dataset.viewFile)) tile.remove(); });
+        card.querySelectorAll(".codebox .box").forEach(bx => { if (bx.querySelector(".picrow") && !bx.querySelector(".pictile")) bx.remove(); });
+        loadTiles(card);
+        card.querySelectorAll("[data-use]").forEach(b => b.onclick = () => ask(question, { focus: b.dataset.use }));
+      }
       q(".speak").hidden = false; wireCites();
     } else if (ev.type === "error") {
       q(".body").innerHTML = `<div class="error">${esc(ev.error)}</div>`;
@@ -904,7 +958,7 @@ async function ask(question) {
   };
   try {
     const r = await fetch("/api/ask-stream", { method: "POST", headers: H,
-      body: JSON.stringify({ question, images: images.map(im => ({ name: im.name, data: im.data })) }) });
+      body: JSON.stringify({ question, focus: opts.focus || null, images: images.map(im => ({ name: im.name, data: im.data })) }) });
     if (!r.ok) { const d = await r.json().catch(() => ({})); throw new Error(d.error || "Something went wrong."); }
     const reader = r.body.getReader(), dec = new TextDecoder();
     let buf = "";

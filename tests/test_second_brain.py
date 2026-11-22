@@ -53,10 +53,12 @@ def comps(personal=False, photos=False):
 
 class with_notebook_text:
     """Make the fake reader return the notebook text, then put things back."""
+    def __init__(self, text=None):
+        self.text = text
     def __enter__(self):
         from secondbrain import ocr
         self.old = os.environ.get("FAKE_OCR_TEXT")
-        os.environ["FAKE_OCR_TEXT"] = NOTEBOOK_TEXT
+        os.environ["FAKE_OCR_TEXT"] = self.text or NOTEBOOK_TEXT
         ocr.forget()
     def __exit__(self, *a):
         from secondbrain import ocr
@@ -351,6 +353,26 @@ class Pictures(unittest.TestCase):
         self.assertEqual(ctx["sources"][0]["file"], "Pasted/note.png")
         self.assertEqual(ctx["sources"][0]["paste_id"], "abc")
         self.assertIn("PICTURE YOU PASTED", ctx["prompt"])
+
+
+class DidYouMean(unittest.TestCase):
+    def test_close_photos_offered_even_with_messy_handwriting(self):
+        with with_notebook_text("Sprnt 3 retrospectve Fridy 15 Jan"):
+            ctx = brain.prepare("when is the sprint retrospective?", comps(photos=True))
+        self.assertEqual([m["file"] for m in ctx["maybe_pictures"]], ["Photos/Notebook 2026-12-18.jpg"])
+        self.assertIn("sprint", ctx["maybe_pictures"][0]["matched"])
+
+    def test_nothing_offered_when_nothing_looks_alike(self):
+        with with_notebook_text("Shopping: milk, eggs"):
+            ctx = brain.prepare("when is the sprint retrospective?", comps(photos=True))
+        self.assertEqual(ctx["maybe_pictures"], [])
+
+    def test_yes_use_this_reads_the_photo_first(self):
+        with with_notebook_text("Sprnt 3 retrospectve Fridy 15 Jan"):
+            ctx = brain.prepare("when is the retro?", comps(photos=True), focus="Photos/Notebook 2026-12-18.jpg")
+        self.assertTrue(ctx["found"])
+        self.assertEqual(ctx["sources"][0]["file"], "Photos/Notebook 2026-12-18.jpg")
+        self.assertIn("PICTURE YOU CHOSE", ctx["prompt"])
 
 
 class Server(unittest.TestCase):
