@@ -196,7 +196,11 @@ class Answering(unittest.TestCase):
         self.assertLess(p.index("SINCE LAST TIME"), p.index("LAST TIME (notes"))
         last = p.index("LAST TIME (notes")
         self.assertLess(last, p.index("2026-11-02 1-1 Priya.md"))
-        self.assertLess(p.index("2026-11-02 1-1 Priya.md"), p.index("=== OPEN ACTIONS"))
+        self.assertNotIn("=== OPEN ACTIONS", p)  # the code lists actions itself
+        acts = ctx["brief"]["actions"]
+        self.assertTrue(acts)
+        wcag = [a for a in acts if "WCAG" in a["action"]][0]
+        self.assertFalse(wcag["overdue"])  # due 30 Nov: not overdue on 22 Nov
 
     def test_prepare_me_brief_from_code(self):
         from secondbrain import ocr

@@ -116,6 +116,8 @@ def build_prompt(question, picked, missing, day, sections=None):
     for n, c in enumerate(picked, start=1):
         if sections:
             sec = sections.get(id(c), "MORE")
+            if sec in ("OPEN ACTIONS",):
+                continue  # actions are listed by the code itself, not by the AI
             if sec != current:
                 lines += ["", f"=== {SECTION_HELP[sec]} ==="]
                 current = sec
@@ -131,15 +133,22 @@ def build_prompt(question, picked, missing, day, sections=None):
         "",
         f"QUESTION: {question}",
         "",
-        *([
-            "Answer with these headings, in this order, each followed by 1-3 short bullet points with source numbers:",
-            "Since last time:", "Last time:", "Open actions:", "Follow up:",
-            "Put the source number at the END of the same line as each fact, like: - She was offered a new role [1]",
-            "After the four headings:",
-        ] if sections else ["Answer with:", "1. The answer, as short bullet points with source numbers."]),
-        "2. A line starting 'Watch out:' for anything out of date, conflicting, unfinished, overdue or private. Skip it if there is nothing.",
-        "3. A line starting 'Not in your notes:' for any part you could not find. Skip it if you found everything.",
     ]
+    if sections:
+        lines += [
+            "Write exactly two headings, each with 2-3 short bullet points:",
+            "What's new: the most important things that changed since the last meeting (use the SINCE LAST TIME sources first).",
+            "Ask about: questions to ask in this meeting.",
+            "Put the source number at the END of each line, like: - She was offered a new role [1]",
+            "If a word from handwriting makes no sense, leave it out. Do not write anything else.",
+        ]
+    else:
+        lines += [
+            "Answer with:",
+            "1. The answer, as short bullet points with source numbers.",
+            "2. A line starting 'Watch out:' for anything out of date, conflicting, unfinished, overdue or private. Skip it if there is nothing.",
+            "3. A line starting 'Not in your notes:' for any part you could not find. Skip it if you found everything.",
+        ]
     return "\n".join(lines)
 
 
@@ -187,7 +196,7 @@ def ask_model_stream(prompt, model, keep_alive):
             ],
             "stream": True,
             "keep_alive": int(keep_alive) if str(keep_alive).isdigit() else keep_alive,
-            "options": {"temperature": 0.1, "num_ctx": 8192, "num_predict": 450},
+            "options": {"temperature": 0.1, "num_ctx": 4096, "num_predict": 300},
         }
     ).encode()
     req = urllib.request.Request(
@@ -353,18 +362,34 @@ def meeting_sources(title, question, chunks, day, info, limit=8):
 
 
 def _brief(picked, info, day):
-    """What the code itself knows for a meeting: when the last one was and
-    what has been written since. Shown as-is, so the AI can't drop it."""
+    """What the code itself knows for a meeting, shown as-is so the AI can't
+    drop it or get it wrong: the last meeting, what's new, and open actions."""
     sections = info.get("sections")
     if not sections:
         return None
-    new = []
+    new, last_notes, actions, seen = [], [], [], set()
     for n, c in enumerate(picked, start=1):
-        if sections.get(id(c)) == "SINCE LAST TIME":
+        sec = sections.get(id(c))
+        if sec == "SINCE LAST TIME" and c.rel not in seen:
+            seen.add(c.rel)
             new.append({"n": n, "file": c.rel.split("/")[-1], "kind": c.kind,
                         "date": notes.nice_date(c.date) if c.date else ""})
+        elif sec == "LAST TIME":
+            body = [l.strip(" -•*") for l in c.text.splitlines()[1:] if l.strip(" -•*#")]
+            last_notes.append({"n": n, "file": c.rel.split("/")[-1], "points": body[:8]})
+        elif sec == "OPEN ACTIONS":
+            f = dict(p.split(": ", 1) for p in c.text.replace("Action item — ", "").split("; ") if ": " in p)
+            due = f.get("due", "")
+            try:
+                due_label = notes.nice_date(dt.date.fromisoformat(due))
+            except ValueError:
+                due_label = due
+            actions.append({"n": n, "owner": "You" if f.get("owner") == "me" else f.get("owner", ""),
+                            "action": f.get("action", c.text), "due": due_label,
+                            "overdue": "overdue" in c.flags})
     last = info.get("last_date")
-    return {"last_meeting": notes.nice_date(last) if last else None, "new_since": new}
+    return {"last_meeting": notes.nice_date(last) if last else None,
+            "new_since": new, "last_notes": last_notes, "actions": actions}
 
 
 def _explain(ctx, used_files):
@@ -396,6 +421,10 @@ def not_found(ctx):
 def finish(ctx, text):
     """After the AI has written: work out what it used and how sure to be."""
     cited = sorted({int(n) for n in re.findall(r"\[(\d+)\]", text)})
+    if ctx.get("brief"):
+        b = ctx["brief"]
+        cited = sorted(set(cited) | {x["n"] for x in b["new_since"]} | {x["n"] for x in b["last_notes"]}
+                       | {x["n"] for x in b["actions"]})
     for s in ctx["sources"]:
         s["used"] = s["n"] in cited
     level, reason = confidence(ctx["_picked"], cited, ctx["_day"])

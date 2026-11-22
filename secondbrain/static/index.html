@@ -642,7 +642,7 @@ function renderAnswerText(text) {
     const line = raw.trim();
     if (!line) continue;
     const plain = line.replace(/^[-*•#\d.\s\[]+(?=[A-Za-z])/, "").replace(/\*\*/g, "").replace(/^(Watch out|Not in your notes):?\]\s*/i, "$1: ");
-    if (/^(since last time|last time|open actions|follow up|what has changed|what to follow up on)[^:]{0,20}:\s*$/i.test(plain)) {
+    if (/^(since last time|last time|open actions|follow up|what has changed|what to follow up on|what's new|what’s new|ask about)[^:]{0,20}:\s*$/i.test(plain)) {
       section = "main"; if (inList) { html += "</ul>"; inList = false; }
       html += `<p style="margin-top:12px"><b>${esc(plain)}</b></p>`; continue;
     }
@@ -729,6 +729,16 @@ async function ask(question) {
     } else if (ev.type === "token") {
       text += ev.text; q(".body").innerHTML = renderAnswerText(text); wireCites();
     } else if (ev.type === "done") {
+      const b = ctx && ctx.brief;
+      if (b && (b.actions.length || b.last_notes.length)) {
+        let extra = "";
+        if (b.actions.length) extra += `<div style="margin-top:14px"><b>Open actions</b> <span class="muted small">· listed by code</span>`
+          + b.actions.map(a => `<div style="display:flex;gap:8px;align-items:baseline;padding:4px 0">☑️ <span><b>${esc(a.owner)}:</b> ${esc(a.action)} <span class="muted">· due ${esc(a.due)}</span>
+             ${a.overdue ? '<span class="tag flag">overdue</span>' : ""} <button class="cite" data-n="${a.n}">${a.n}</button></span></div>`).join("") + `</div>`;
+        if (b.last_notes.length) extra += `<details style="margin-top:12px"><summary style="cursor:pointer"><b>Last time${b.last_meeting ? " (" + esc(b.last_meeting) + ")" : ""}</b> <span class="muted small">· your own notes</span></summary>`
+          + b.last_notes.map(x => `<ul>${x.points.map(p => `<li>${esc(p)} <button class="cite" data-n="${x.n}">${x.n}</button></li>`).join("")}</ul>`).join("") + `</details>`;
+        q(".whybox").insertAdjacentHTML("beforebegin", `<div class="brief-extra">${extra}</div>`);
+      }
       q(".conf").innerHTML = confidencePill(ev.confidence);
       q(".body").innerHTML = ctx && ctx.found ? renderAnswerText(ev.answer) : `<p>${esc(ev.answer)}</p>`;
       const also = ctx && ctx.also_looked_for && ctx.also_looked_for.length ? `<div class="why"><b>I also looked for:</b> ${esc(ctx.also_looked_for.join(", "))}</div>` : "";
