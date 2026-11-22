@@ -510,6 +510,39 @@ class FromDavidsVersion(unittest.TestCase):
         self.assertRegex(text, r"\[\d+\]")
 
 
+class Models(unittest.TestCase):
+    """Choosing the local model, and keeping 'thinking' text out of answers."""
+
+    def choose(self, have, ram, setting="auto"):
+        from secondbrain import models
+        with mock.patch.object(models, "installed", return_value=have), mock.patch.object(models, "ram_gb", return_value=ram):
+            return models.choose(setting)
+
+    def test_auto_picks_the_best_installed_model_that_fits(self):
+        self.assertEqual(self.choose(["llama3.2:3b", "qwen3:8b"], 16), "qwen3:8b")
+        self.assertEqual(self.choose(["llama3.2:3b", "qwen3:8b"], 8), "llama3.2:3b")
+        self.assertEqual(self.choose(["llama3.2:3b", "qwen3:4b"], 8), "qwen3:4b")
+
+    def test_a_named_model_is_used_if_installed(self):
+        self.assertEqual(self.choose(["llama3.2:3b", "qwen3:8b"], 16, "llama3.2:3b"), "llama3.2:3b")
+        self.assertEqual(self.choose(["qwen3:4b"], 16, "qwen3:8b"), "qwen3:4b")  # not installed: best available
+
+    def test_nothing_installed_falls_back(self):
+        self.assertEqual(self.choose([], 16), "llama3.2:3b")
+
+    def test_thinking_text_never_reaches_the_chat(self):
+        from secondbrain import models
+        self.assertEqual("".join(models.clean_stream(["<th", "ink>hmm</th", "ink>", "Pilot is 26 Jan [1]."])), "Pilot is 26 Jan [1].")
+        self.assertEqual("".join(models.clean_stream(["<|channel>thought\n<channel|>", "Answer [2]"])), "Answer [2]")
+        self.assertEqual("".join(models.clean_stream(["Fewer < 5 people ", "and <b>"])), "Fewer < 5 people and <b>")
+
+    def test_thinking_switched_off_only_for_models_that_think(self):
+        from secondbrain import models
+        with mock.patch.dict(models._cache["caps"], {"qwen3:8b": True, "llama3.2:3b": False}):
+            self.assertEqual(models.extras("qwen3:8b"), {"think": False})
+            self.assertEqual(models.extras("llama3.2:3b"), {})
+
+
 class Server(unittest.TestCase):
     @classmethod
     def setUpClass(cls):

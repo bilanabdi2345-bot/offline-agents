@@ -76,7 +76,7 @@ make out is marked *unclear* rather than guessed. Spelling mistakes are forgiven
 
 | Promise | How it's done | How you can check |
 |---|---|---|
-| Nothing leaves the laptop | The AI model (Llama 3.2, 3B) runs locally with Ollama. A network guard inside the app blocks every connection that isn't to this laptop, including DNS lookups. | Click **Try to break the rule**: the app tries to reach the internet and is blocked. Click **Ask my Mac what's connected**: macOS lists every open connection. Or turn Wi-Fi off; it still works. |
+| Nothing leaves the laptop | The AI model (Qwen3, Gemma 4 or Llama 3.2, whichever you install) runs locally with Ollama, which uses Apple's MLX on Macs. A network guard inside the app blocks every connection that isn't to this laptop, including DNS lookups. | Click **Try to break the rule**: the app tries to reach the internet and is blocked. Click **Ask my Mac what's connected**: macOS lists every open connection. Or turn Wi-Fi off; it still works. |
 | No copies | No database, no search index, no cache, no log file. Notes are read fresh for each question, in memory, then dropped. A write guard blocks the app from saving any file. The model is unloaded after every answer. | The trust panel shows "saved 0 files". **Try to break the rule** also tries to save a copy and is blocked. |
 | Your notes stay as they were | Files are only ever opened read-only. | A fingerprint of all notes is taken at start and re-checked live. |
 | You choose what it sees | Notes are split into compartments (Team, Projects, Personal). Switched off means never opened. | Switch Personal off and ask about it: the answer says it didn't look there, and the file list proves it. |
@@ -90,10 +90,15 @@ More detail: [docs/how-it-keeps-notes-yours.md](docs/how-it-keeps-notes-yours.md
 ## Set it up (Mac, about 10 minutes, needs internet once)
 
 1. Install **Ollama** from ollama.com/download and open it.
-2. In Terminal, download the AI model:
+2. In Terminal, download an AI model. Pick by your Mac's memory (Apple menu → About This Mac):
    ```sh
-   ollama pull llama3.2:3b
+   ollama pull qwen3:4b      # 8 GB Mac: fast and accurate
+   ollama pull qwen3:8b      # 16 GB or more: best answers
+   ollama pull llama3.2:3b   # the small model the demo was first built with
    ```
+   Codicilix picks the best one you've installed (`"model": "auto"` in `config.json`). Click the
+   **AI: … ▾** chip at the top to compare models. Newer models like Qwen3 can "think out loud";
+   Codicilix switches that off, because the code has already found the right notes.
 3. Get this project and make the app:
    ```sh
    git clone https://github.com/bilanabdi2345-bot/offline-agents.git
@@ -152,7 +157,7 @@ The app treats **5 January 2027** as "today" (`demo_today` in `config.json`).
 python3 -B -m unittest discover tests
 ```
 
-67 tests. They use a fake AI model, so they run anywhere.
+72 tests. They use a fake AI model, so they run anywhere.
 
 ## Project layout
 

@@ -7,7 +7,7 @@
 
 ## 1. Nothing leaves the device
 
-- **Local AI.** The language model (Llama 3.2, 3 billion parameters) runs on the laptop through Ollama, at 127.0.0.1:11434.
+- **Local AI.** The language model (Qwen3, Gemma 4 or Llama 3.2: whichever is installed) runs on the laptop through Ollama, at 127.0.0.1:11434. Every model is unloaded after each answer.
 - **Network guard.** Before the app reads a single note, it replaces Python's network functions with guarded versions. Only connections to this laptop (127.0.0.1, ::1, localhost) are allowed. Anything else is blocked, and DNS lookups for outside names are blocked too. Every allowed and blocked attempt is counted in memory and shown in the trust panel.
 - **Local-only server.** The app window is served on 127.0.0.1 only, so no other device can reach it. It also rejects requests from other websites, by checking the Origin and Host headers and a custom header.
 

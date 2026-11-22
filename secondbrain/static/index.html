@@ -231,9 +231,21 @@
   .pictile span { font-size: 0.82em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .maybe-pic { display: flex; flex-direction: column; gap: 6px; width: 170px; }
   .small-btn { padding: 6px 10px; font-size: 0.85em; }
+  .answer .body p { margin: 0 0 8px; line-height: 1.6; }
+  .noteline { font-size: 0.95em; color: var(--muted); margin-top: 6px !important; }
+  .noteline.warnline { color: inherit; }
+  .alerts { display: flex; flex-direction: column; gap: 4px; margin-top: 4px; }
+  .alertline { font-size: 0.92em; padding: 6px 10px; border-radius: 10px; background: var(--sunk); line-height: 1.5; }
+  .alertline a { color: var(--a); }
+  .picbox { margin-top: 10px; }
+  .review { margin-top: 12px; border: 0; background: transparent; color: var(--a); font: inherit; font-weight: 600;
+    cursor: pointer; padding: 6px 0; }
+  .review:hover { text-decoration: underline; }
+  .more { border-top: 1px solid var(--line); margin-top: 8px; padding-top: 4px; }
   .box.changed { border: 1px solid var(--a); background: color-mix(in srgb, var(--a) 8%, var(--panel)); }
   .box.shield { border: 1px solid #e0a100; background: color-mix(in srgb, #ffd54a 14%, var(--panel)); }
   .box.shield pre { white-space: pre-wrap; max-height: 220px; overflow: auto; }
+  button.pill { border: 0; cursor: pointer; font: inherit; }
   .viewer { position: fixed; inset: 0; z-index: 50; background: rgba(10,10,10,.72); display: flex; align-items: center; justify-content: center; padding: 24px; }
   .viewer .panel { background: var(--panel); border-radius: 16px; max-width: min(1100px, 96vw); max-height: 94vh; display: flex; flex-direction: column; overflow: hidden; }
   .viewer .bar { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 12px 16px; border-bottom: 1px solid var(--line); flex-wrap: wrap; }
@@ -264,7 +276,7 @@
   <main>
     <div class="topbar">
       <h1 id="pageTitle">Ask</h1>
-      <div class="pills"><span class="pill plain" id="todayPill" hidden></span><span class="pill">🔒 Runs only on this laptop</span><span class="pill plain" id="modelPill">Checking AI model…</span></div>
+      <div class="pills"><span class="pill plain" id="todayPill" hidden></span><span class="pill">🔒 Runs only on this laptop</span><button class="pill plain" id="modelPill" title="Choose the AI model">Checking AI model…</button></div>
     </div>
 
     <!-- ================= ASK ================= -->
@@ -449,6 +461,12 @@
       </div>
     </section>
   </main>
+  <div class="viewer" id="modelPanel" hidden role="dialog" aria-modal="true" aria-label="Choose the AI model">
+    <div class="panel" style="max-width:640px;width:96vw">
+      <div class="bar"><b>Choose the AI model</b><button class="btn primary" id="modelClose">Close</button></div>
+      <div style="padding:16px;overflow:auto" id="modelList"></div>
+    </div>
+  </div>
   <div class="viewer" id="viewer" hidden role="dialog" aria-modal="true" aria-label="Photo viewer">
     <div class="panel">
       <div class="bar"><b id="viewerTitle">Photo</b>
@@ -661,7 +679,7 @@ async function loadState() {
   const ms = s.model_status, pill = $("modelPill");
   if (!ms.running) { pill.className = "pill bad"; pill.textContent = "AI model not running · open Ollama"; }
   else if (!ms.model_ready) { pill.className = "pill warn"; pill.textContent = `Model ${s.model} not downloaded`; }
-  else { pill.className = "pill plain"; pill.textContent = `AI: ${s.model} · local`; }
+  else { pill.className = "pill plain"; pill.textContent = `AI: ${s.model} · local ▾`; }
 
   $("folders").innerHTML = s.compartments.map(c => `
     <div class="folder ${c.enabled ? "" : "off"}">
@@ -737,8 +755,9 @@ function renderAnswerText(text) {
   if (inList) html += "</ul>";
   const cites = s => s.replace(/\[(\d+)\]/g, '<button class="cite" data-n="$1" title="Show source $1">$1</button>');
   let out = cites(html);
-  if (warn.length) out += `<div class="box warn"><b>Watch out</b>${cites(esc(warn.join(" ")))}</div>`;
-  if (miss.length) out += `<div class="box miss"><b>Not in your notes</b>${cites(esc(miss.join(" ")))}</div>`;
+  const cap = s => s.charAt(0).toUpperCase() + s.slice(1);
+  if (warn.length) out += `<p class="noteline warnline">⚠️ ${cites(esc(cap(warn.join(" "))))}</p>`;
+  if (miss.length) out += `<p class="noteline">❔ Not in your notes: ${cites(esc(miss.join(" ")))}</p>`;
   return out;
 }
 function confidencePill(level) {
@@ -857,6 +876,32 @@ async function loadTiles(root) {
   }
 }
 
+/* ---------- AI model picker: every model runs on this laptop ---------- */
+async function openModels() {
+  $("modelPanel").hidden = false;
+  $("modelList").innerHTML = '<span class="thinking"><span class="spin"></span>Asking Ollama on this laptop…</span>';
+  const m = await api("/api/models");
+  const row = (name, why, inst, fits) => `<div class="kind" style="align-items:center">
+      <div><b>${esc(name)}</b>${name === m.current ? ' <span class="tag">in use</span>' : ""}${name === m.recommended ? ' <span class="tag">best for your Mac</span>' : ""}
+        <div class="muted small">${esc(why)}${fits ? "" : ` · needs a Mac with more memory than ${m.ram_gb} GB`}</div>
+        ${inst ? "" : `<div class="small" style="margin-top:4px">To install, run in Terminal: <code>ollama pull ${esc(name)}</code></div>`}</div>
+      ${inst ? `<button class="btn ${name === m.current ? "" : "primary"}" data-model="${esc(name)}" ${name === m.current ? "disabled" : ""}>${name === m.current ? "In use" : "Use this"}</button>` : ""}
+    </div>`;
+  $("modelList").innerHTML = `<p class="muted small" style="margin-top:0">Your Mac has ${m.ram_gb} GB of memory. Every model here runs only on this laptop, and is unloaded after each answer.
+      Switching is for this session; to keep a choice, set "model" in config.json (now "${esc(m.setting)}").</p>
+    <div class="kind" style="align-items:center"><div><b>Automatic</b><div class="muted small">Use the best installed model for your Mac</div></div>
+      <button class="btn" data-model="auto">Use automatic</button></div>
+    ${m.models.map(x => row(x.name, x.why, x.installed, x.fits)).join("")}
+    ${m.other_installed.map(n => row(n, "also installed on this laptop", true, true)).join("")}`;
+  $("modelList").querySelectorAll("[data-model]").forEach(b => b.onclick = async () => {
+    try { await api("/api/model", { model: b.dataset.model }); await loadState(); openModels(); }
+    catch (e) { alert(e.message); }
+  });
+}
+$("modelPill").onclick = openModels;
+$("modelClose").onclick = () => { $("modelPanel").hidden = true; };
+$("modelPanel").onclick = e => { if (e.target.id === "modelPanel") $("modelPanel").hidden = true; };
+
 let answerCount = 0;
 async function ask(question, opts = {}) {
   question = question.trim();
@@ -875,13 +920,26 @@ async function ask(question, opts = {}) {
   card.innerHTML = `
     <div class="head"><span class="who"><span class="dot">✦</span>Codicilix</span>
       <span style="display:flex;gap:8px;align-items:center"><span class="conf"></span><button class="btn speak" hidden>🔊 Read aloud</button></span></div>
-    <div class="codebox"></div>
+    <div class="keep"></div>
     <div class="body"><span class="thinking"><span class="spin"></span>Reading your notes on this laptop…</span></div>
-    <div class="whybox"></div><div class="srcbox"></div>
-    <div class="muted small foot" style="margin-top:8px"></div>`;
+    <div class="alerts"></div>
+    <div class="keep2"></div>
+    <button class="review" hidden aria-expanded="false">Review more ▾</button>
+    <div class="more" hidden>
+      <div class="codebox"></div>
+      <div class="whybox"></div><div class="srcbox"></div>
+      <div class="muted small foot" style="margin-top:8px"></div>
+    </div>`;
   $("thread").append(you, card);
   you.scrollIntoView({ behavior: "smooth", block: "start" });
   const q = sel => card.querySelector(sel);
+  const openMore = (yes = true) => {
+    q(".more").hidden = !yes;
+    q(".review").setAttribute("aria-expanded", String(yes));
+    q(".review").textContent = yes ? "Hide details ▴" : "Review more ▾ · sources, checks and why";
+  };
+  q(".review").onclick = () => openMore(q(".more").hidden);
+  const addAlert = (icon, html) => q(".alerts").insertAdjacentHTML("beforeend", `<div class="alertline">${icon} ${html}</div>`);
   $("askBtn").disabled = $("prepBtn").disabled = true;
   const t0 = performance.now();
   let text = "", ctx = null;
@@ -901,6 +959,7 @@ async function ask(question, opts = {}) {
   const wireViews = () => card.querySelectorAll("[data-view-file], [data-view-paste]").forEach(b => b.onclick = () =>
     openViewer({ file: b.dataset.viewFile, paste: b.dataset.viewPaste, name: b.dataset.viewName, terms: highlightTerms() }));
   const wireCites = () => { wireViews(); card.querySelectorAll(".cite[data-n]").forEach(b => b.onclick = () => {
+    openMore(true); const det = q("details.sources"); if (det) det.open = true;
     const d = q("details.sources"); if (d) d.open = true;
     const el = $(`${id}-src-${b.dataset.n}`);
     if (el) { el.scrollIntoView({ behavior: "smooth", block: "center" }); el.classList.add("flash"); setTimeout(() => el.classList.remove("flash"), 1500); }
@@ -924,11 +983,11 @@ async function ask(question, opts = {}) {
         showSources(ev.sources, false);
         const pics = ev.sources.filter(s => s.kind === "screenshot or photo").filter((x, i, a) => a.findIndex(y => y.file === x.file) === i);
         if (pics.length) {
-          q(".codebox").insertAdjacentHTML("afterbegin", `<div class="box"><b>📷 Pictures used · click one to look closer</b><div class="picrow">${pics.map(s => picTile(s.paste_id ? { paste: s.paste_id } : { file: s.file }, s.file)).join("")}</div></div>`);
+          q(".keep2").insertAdjacentHTML("afterbegin", `<div class="picbox"><div class="muted small">📷 Pictures used · click one to look closer</div><div class="picrow">${pics.map(s => picTile(s.paste_id ? { paste: s.paste_id } : { file: s.file }, s.file)).join("")}</div></div>`);
           loadTiles(card);
         }
         wireViews();
-        if (ev.brief && ev.brief.new_since.length) q(".codebox").insertAdjacentHTML("beforeend",
+        if (ev.brief && ev.brief.new_since.length) q(".keep").insertAdjacentHTML("beforeend",
           `<div class="box warn" style="background:var(--a-soft);color:var(--text);margin:0 0 10px"><b style="color:var(--a-text)">📌 ${ev.brief.last_meeting ? "New since your last meeting on " + esc(ev.brief.last_meeting) : "What you wrote about them recently"} · found by code</b>`
           + ev.brief.new_since.filter((x, i, a) => a.findIndex(y => y.file === x.file) === i).map(x => `<div>${KIND_ICON[x.kind] || "📝"} ${esc(x.file)} <span class="muted">· ${esc(x.date)}</span> <button class="cite" data-n="${x.n}">${x.n}</button></div>`).join("") + `</div>`);
         if (ev.spelling && ev.spelling.length) q(".codebox").insertAdjacentHTML("beforeend", `<div class="box miss"><b>Spelling</b>I matched ${ev.spelling.map(s => `“${esc(s.typed)}” to “${esc(s.read_as)}”`).join(", ")} in your notes.</div>`);
@@ -945,7 +1004,7 @@ async function ask(question, opts = {}) {
              ${a.overdue ? '<span class="tag flag">overdue</span>' : ""} <button class="cite" data-n="${a.n}">${a.n}</button></span></div>`).join("") + `</div>`;
         if (b.last_notes.length) extra += `<details style="margin-top:12px"><summary style="cursor:pointer"><b>Last time${b.last_meeting ? " (" + esc(b.last_meeting) + ")" : ""}</b> <span class="muted small">· your own notes</span></summary>`
           + b.last_notes.map(x => `<ul>${x.points.map(p => `<li>${esc(p)} <button class="cite" data-n="${x.n}">${x.n}</button></li>`).join("")}</ul>`).join("") + `</details>`;
-        q(".whybox").insertAdjacentHTML("beforebegin", `<div class="brief-extra">${extra}</div>`);
+        q(".keep2").insertAdjacentHTML("afterbegin", `<div class="brief-extra">${extra}</div>`);
       }
       q(".conf").innerHTML = confidencePill(ev.confidence);
       q(".body").innerHTML = ctx && ctx.found ? renderAnswerText(ev.answer) : `<p>${esc(ev.answer)}</p>`;
@@ -953,22 +1012,31 @@ async function ask(question, opts = {}) {
       q(".whybox").innerHTML = also + `<div class="why"><b>Why:</b> ${esc(ev.confidence_reason)}</div><div class="why"><b>Where this came from:</b> ${esc(ev.explanation)}</div>`;
       if (ev.sources) showSources(ev.sources, false);
       q(".foot").textContent = `Answered in ${ev.seconds}s${ev.timing ? " (" + ev.timing + ")" : ""} · nothing saved`;
-      const unsure = ev.confidence === "none" || ev.confidence === "low" || /not in your notes/i.test(ev.answer || "");
+      const unsure = ev.confidence === "none" || ev.confidence === "low" || /(not|isn['’]t) in your notes/i.test(ev.answer || "");
       const used = new Set((ev.sources || []).filter(s => s.used).map(s => s.file));
       const maybe = ((ctx && ctx.maybe_pictures) || []).filter(m => !used.has(m.file));
       if (unsure && maybe.length && !opts.focus) {
-        q(".whybox").insertAdjacentHTML("beforebegin", `<div class="box maybe"><b>🤔 Did you mean one of these?</b>
+        q(".keep2").insertAdjacentHTML("beforeend", `<div class="box maybe"><b>🤔 Did you mean one of these?</b>
           <div class="muted small" style="margin-bottom:10px">I'm not sure, so here are the photos and screenshots that look closest. Have a look and decide.</div>
           <div class="picrow">${maybe.map(m => `<div class="maybe-pic">${picTile({ file: m.file }, m.file)}
             <div class="muted small">${esc(m.date_label)} · looks like: ${esc(m.matched.join(", "))}</div>
             <button class="btn primary small-btn" data-use="${esc(m.file)}">✓ Yes, use this</button></div>`).join("")}</div></div>`);
         // Don't show the same picture twice: it's in "Did you mean" now.
         const offered = new Set(maybe.map(m => m.file));
-        card.querySelectorAll(".codebox .pictile").forEach(tile => { if (offered.has(tile.dataset.viewFile)) tile.remove(); });
-        card.querySelectorAll(".codebox .box").forEach(bx => { if (bx.querySelector(".picrow") && !bx.querySelector(".pictile")) bx.remove(); });
+        card.querySelectorAll(".picbox .pictile").forEach(tile => { if (offered.has(tile.dataset.viewFile)) tile.remove(); });
+        card.querySelectorAll(".picbox").forEach(bx => { if (!bx.querySelector(".pictile")) bx.remove(); });
         loadTiles(card);
         card.querySelectorAll("[data-use]").forEach(b => b.onclick = () => ask(question, { focus: b.dataset.use }));
       }
+      // Short, plain lines for what matters; everything else is under "Review more".
+      if (ctx && ctx.blocked && ctx.blocked.length)
+        addAlert("🛡️", `I blocked ${ctx.blocked.length === 1 ? "1 file" : ctx.blocked.length + " files"} that tried to give the AI instructions. <a href="#" class="seemore">See why</a>`);
+      for (const c of (ctx && ctx.changes) || []) {
+        addAlert("🔁", esc(c.short));
+      }
+      if (ev.no_ai) addAlert("ℹ️", "The AI isn't running, so these are exact quotes from your notes.");
+      card.querySelectorAll(".seemore").forEach(a => a.onclick = e => { e.preventDefault(); openMore(true); });
+      q(".review").hidden = false; openMore(false);
       q(".speak").hidden = false; wireCites();
     } else if (ev.type === "error") {
       q(".body").innerHTML = `<div class="error">${esc(ev.error)}</div>`;

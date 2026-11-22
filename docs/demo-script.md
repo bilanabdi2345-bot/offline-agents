@@ -6,7 +6,7 @@ Each part maps to a judging criterion. Cut the waiting in editing.
 ## Before you record
 - Open Codicilix from its icon. It opens in its own window (no address bar).
   Make it full screen with **Ctrl + Cmd + F**, and hide the Dock (**Option + Cmd + D**).
-- Open the Ollama app, then Codicilix. Top right should say "AI: llama3.2:3b · local"
+- Open the Ollama app, then Codicilix. Top right should say "AI: <your model> · local" (for example qwen3:4b)
   and "Today: Tue 5 Jan 2027 (demo date)".
 - Personal is switched **off**.
 - Ask one question to warm the model up, then press **Forget this session**.

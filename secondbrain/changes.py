@@ -183,6 +183,16 @@ def describe_change(s):
     return text
 
 
+def short_change(s):
+    """One plain line: 'The pilot moved from 12 Jan to 26 Jan. The handover draft still says 12 Jan.'"""
+    first, last = s["seq"][0][0], s["seq"][-1][0]
+    text = f"{s['subject'].capitalize()} moved from {_fmt(s['kind'], first)} to {_fmt(s['kind'], last)}."
+    if s["still_old"]:
+        c, n, line, v = s["still_old"][0]
+        text += f" Careful: {short(c.rel)} still says {_fmt(s['kind'], v)}."
+    return text
+
+
 def what_i_owe(chunks, today):
     """Your open promises: open actions owned by you, and 'I'll ...' lines."""
     out = []

@@ -14,7 +14,7 @@ import urllib.parse
 import urllib.error
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
-from . import brain, checkup, guards, ocr, themes, trust
+from . import models, brain, checkup, guards, ocr, themes, trust
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 
@@ -24,12 +24,19 @@ class App:
         self.port = port
         self.token = token  # a new secret key every launch, held in memory only
         self.config = config
-        self.model = config.get("model", "llama3.2:3b")
+        self.model_setting = config.get("model", "auto")  # "auto" = best installed model for this Mac
+        self.model_choice = None  # picked in the app, for this session only
         self.keep_alive = str(config.get("model_keep_alive", "0"))
         self.compartments = brain.Compartments(config["compartments"], config.get("kinds"))
         self.seal = trust.NotesSeal(self.compartments.paths())
         self.session_reads = []  # files read this session, in memory only
         self.pastes = {}  # pictures pasted into the chat: memory only, wiped by Forget
+
+    @property
+    def model(self):
+        if brain.FAKE_LLM:
+            return self.model_setting if self.model_setting != "auto" else "llama3.2:3b"
+        return self.model_choice or models.choose(self.model_setting)
 
     def forget(self):
         self.session_reads = []
@@ -111,6 +118,8 @@ def make_handler(app, port):
                 return self.send(200, {"themes": found, "problems": problems})
             if self.path.startswith("/api/image"):
                 return self.image(self.path.startswith("/api/image-layout"))
+            if self.path == "/api/models":
+                return self.send(200, {**models.describe(), "current": app.model, "setting": app.model_setting})
             if self.path == "/api/meetings":
                 return self.send(200, brain.meetings(app.compartments))
             if self.path == "/api/trust":
@@ -144,6 +153,15 @@ def make_handler(app, port):
             if self.path == "/api/ask-stream":
                 return self.ask_stream(data)
 
+            if self.path == "/api/model":
+                name = (data.get("model") or "").strip()
+                if name == "auto":
+                    app.model_choice = None
+                elif name in models.installed():
+                    app.model_choice = name
+                else:
+                    return self.send(400, {"error": "That model isn't installed. In Terminal, run: ollama pull " + name})
+                return self.send(200, {"current": app.model})
             if self.path == "/api/compartment":
                 action = data.get("action")
                 if action == "toggle":

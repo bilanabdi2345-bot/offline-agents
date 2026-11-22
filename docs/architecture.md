@@ -5,7 +5,7 @@ flowchart LR
     subgraph Laptop["Your laptop · internet blocked"]
       FE["Front end<br/>app window<br/>(HTML + JavaScript)"]
       BE["Back end<br/>Python server on 127.0.0.1<br/>key check · guards"]
-      AI["Local AI model<br/>Ollama · Llama 3.2 3B"]
+      AI["Local AI model<br/>Ollama · Qwen3 / Gemma 4 / Llama 3.2"]
       N[("Your notes folders<br/>read-only")]
       FE <-->|questions / streamed answer| BE
       BE <-->|prompt / words| AI
@@ -43,6 +43,12 @@ Plain Python, standard library only, so there is nothing to install.
 6. **Finish**: work out which sources were used and how confident to be. Then forget everything.
 
 The only slow part is the AI writing, so the answer is streamed: you start reading straight away instead of waiting for the end.
+
+## Choosing the model
+`"model": "auto"` picks the best installed model for the Mac's memory: Qwen3 8B (16 GB+),
+Qwen3 4B (8 GB), then Llama 3.2 3B. Thinking models get `"think": false`, because the code has
+already found and organised the right notes; any thinking text that still appears is removed
+before it reaches the chat (`secondbrain/models.py`).
 
 ## Making it faster if needed
 - A smaller model, for example `llama3.2:1b`: faster, but less careful.
