@@ -80,6 +80,8 @@ def make_handler(app, port):
             if self.path == "/api/state":
                 return self.send(200, {
                     "today": day.isoformat(),
+                    "today_label": f"{day.strftime('%a')} {day.day} {day.strftime('%b %Y')}",
+                    "demo_date": bool(app.config.get("demo_today")),
                     "compartments": app.compartments.describe(day),
                     "model": app.model,
                     "model_status": brain.model_status(app.model),

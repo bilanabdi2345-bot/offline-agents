@@ -1,73 +1,64 @@
 # Demo video script (about 3 to 4 minutes)
 
-Record your screen with QuickTime: File, then New Screen Recording. Speak slowly. Each part maps to a judging criterion.
+Record with QuickTime: File > New Screen Recording. Speak slowly.
+Each part maps to a judging criterion. Cut the waiting in editing.
 
 ## Before you record
-- Open the Ollama app.
-- Open Codicilix. Check the top right says "AI model: llama3.2:3b, on this laptop".
-- Make sure **Personal** is switched **off**.
-- Ask one question first to warm the model up, then click **Forget this session**.
-- Have the sample notes folder open in Finder, ready to show.
+- Open the Ollama app, then Codicilix. Top right should say "AI: llama3.2:3b · local"
+  and "Today: Tue 5 Jan 2027 (demo date)".
+- Personal is switched **off**.
+- Ask one question to warm the model up, then press **Forget this session**.
+- Have your real notebook page next to you.
 
 ---
 
-## 1. The problem (20 seconds) · Insight
-**Show:** the sample-notes folder in Finder.
+## 1. The problem (25 seconds) · Insight
+**Say:** "This is Tommy, a manager in Pfizer's AI Studio. Q4 was the busiest time of
+year: a demo for the Medical team, code freeze, Newpage covering bugs from Chennai
+over Christmas, and two new interns. Now it's 5 January, his first day back, and
+he's forgotten half of it."
 
-**Say:** "This is a manager's notes. Meeting notes, an action list, stand-up scraps, saved links, calendar reminders. They're messy and all over the place. In ten minutes this manager has a 1:1 with Priya, and the details are spread across six files."
+**Show:** the sample-notes folder in Finder, then hold up the notebook page.
+"His notes are everywhere. Meeting notes, scraps, a calendar, photos, and this."
 
 ## 2. The one useful moment (60 seconds) · Working end to end, Creative use of AI
-**Show:** your real notebook page (hold it up, or show the photo).
+**Click:** **Prepare me** on "Intern check-in: Bilan & David".
 
-**Say:** "This is a handwritten note from a corridor chat. Priya's been offered a job in another team. I have a 1:1 with her tomorrow."
+**Point at the green box:** "First, the code finds everything Tommy wrote about
+Bilan and David: Megan's training notes, stand-up scraps, and his handwritten note.
+My Mac read the handwriting itself."
 
-**Click:** **Prepare me** on the "1:1 with Priya" card. (Cut the waiting in editing — say "this runs entirely on my laptop".)
+**Point at What's new / Ask about:** "Then the local AI does the judgement: what
+matters, and what to ask them. Like: explain row level security without notes."
 
-**Point at the green box:** "First, the code finds my last 1:1 with Priya in my calendar, and lists everything written about her since then — including my handwritten note, which my Mac read itself."
-
-**Point at What's new / Ask about:** "Then the local AI does the judgement: what matters most, and what to ask. Her job offer comes first."
-
-**Point at Open actions:** "The actions are listed by code, not the AI, so overdue is always right."
+**Point at Open actions:** "Listed by code, so overdue is always right. Megan's
+slides are overdue. The interns' tasks aren't due until Friday."
 
 **Click a source number:** "Every point links to the exact note."
 
-## 2b. Spelling (10 seconds) · Coping with messy input
-**Type:** "is prya thinking of leeving?" **Say:** "Typos happen when you're in a rush. It forgives my spelling, and shows me how it read it."
+## 3. Messy and out of date (30 seconds) · Trust
+**Click:** "When does the pilot start?"
 
-## 3. Messy and out of date (30 seconds) · Coping with messy notes, Trust
-**Click:** the chip "When is the patient app launching?"
+**Say:** "The kick-off said 12 January. An unfinished handover draft still says 12
+January. But at the demo on 10 December it moved to 26 January. It tells me the
+newest answer, and warns me the draft is out of date. That's an email I'd have sent wrong."
 
-**Say:** "My first meeting note says 1 December. An unfinished draft also says 1 December. But a later steering group moved it to 19 January. It tells me the newest answer, and warns me the draft is out of date."
+## 4. Honest, and forgiving (25 seconds) · Trust and explainability
+**Click:** "Something not in my notes". "Nothing about next summer's budget, so it says so."
 
-## 4. Honest when it isn't there (20 seconds) · Trust and explainability
-**Click:** "What did we decide about the Q2 budget for Lagos?"
+**Type:** "what did Megn say in the intrn training?" "Typos happen in a rush. It
+forgives my spelling and shows how it read it."
 
-**Say:** "There's nothing about Lagos in my notes. So it tells me that, instead of making something up."
-
-## 4b. Screenshots and meetings (30 seconds) · Bonus: more than one kind of notes
-**Click** the quick ask "Q4 budget (from a screenshot)".
-
-**Say:** "This answer came from a screenshot of a quick note. My Mac read the text itself. Nothing went online. And it spotted that my action list still shows this as open, but the screenshot says it's been answered."
-
-**Go to Meetings.** "Every meeting is linked to the notes written that day. Here's the team retro, linked to the photo of the whiteboard. One click gives a recap."
-
-## 5. In control (25 seconds) · Knowledge stays yours
-**Say:** "My Personal folder is switched off." Ask: "What do I know about the reorg?" Show that it says it didn't look in Personal.
-
-**Switch Personal on**, ask again, and show that it now finds it. **Switch it off again.**
-
-**Say:** "Switched off means never opened. Not just hidden: the files aren't read at all. I can change my mind any time."
+## 5. In control (20 seconds) · Knowledge stays yours
+**Go to Folders & access.** "Personal is off, so it's never opened."
+Click **Choose a folder…**: "Adding notes is one click, with my Mac's own picker."
 
 ## 6. Check it yourself (35 seconds) · Knowledge stays yours
-**Go to Check-up and press Run check-up.** "Ten checks, in plain English. All clear."
-
-**Click** "Try to break the rule". **Say:** "The app just tried to reach the internet and save a copy of my notes. All three attempts were blocked."
-
-**Click** "Ask my Mac what's connected". **Say:** "This is macOS itself listing every connection. Everything stays on this laptop."
-
-**Turn Wi-Fi off** in the menu bar and ask one more question. **Say:** "Wi-Fi off, and it still works."
-
-**Say:** "It saved zero files. No database, no index. It reads my notes fresh, answers, and forgets. My notes' fingerprint matches, so they're exactly where they were."
+**Go to Check-up, press Run check-up.** "Ten checks, in plain English. All clear."
+Click **Try to break the rule**: "It tried to reach the internet and save a copy. Both blocked."
+**Turn Wi-Fi off** and ask one more question. "Wi-Fi off, still working. It saved
+zero files: it reads my notes, answers, and forgets."
 
 ## 7. Close (10 seconds)
-**Say:** "Codicilix. Your second brain. You already wrote it down. Now it helps you, without ever leaving your hands."
+**Say:** "Codicilix. For the busiest weeks of the year, and the morning after.
+You already wrote it down. Now it helps you, without ever leaving your hands."

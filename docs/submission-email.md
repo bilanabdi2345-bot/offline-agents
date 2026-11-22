@@ -10,7 +10,7 @@ Please find my submission for the Second Brain for Managers challenge.
 
 **Codicilix** is a private second brain for a manager's scattered notes. It runs entirely on the laptop, with a local AI model.
 
-The moment it improves is preparing for a 1:1. With one click, it pulls together what happened last time, open and overdue actions, what has changed, and what to follow up on. Every point links to the exact note it came from.
+The moment it improves is coming back after the holidays. In our demo, Tommy, a manager in Pfizer's AI Studio, returns on 5 January to a check-in with his two interns. With one click, Codicilix finds everything he wrote about them before the break, including a handwritten note his Mac reads itself, lists open actions correctly marked overdue, and suggests what to ask. Every point links to the exact note it came from.
 
 How it keeps the One Rule:
 - **Nothing leaves the device.** The model runs locally, and a network guard blocks every outside connection. Users can test this themselves: there is a "Try to break the rule" button, a live check using macOS's own lsof tool, and it keeps working with Wi-Fi off.

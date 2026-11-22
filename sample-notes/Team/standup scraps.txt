@@ -1,3 +1,4 @@
-standup 4/11 - marcus blocked on API keys from platform team, chased
-standup 9/11 - marcus unblocked. priya: audit found 14 issues, 3 critical (screen reader on login)
-standup 16/11 - critical ones: 2 fixed, 1 left (login screen reader). priya thinks done by 27 nov
+standup 2/12 - Xinyue: login working on staging. Mehreen's team (Chennai) on the export bug overnight
+standup 8/12 - export bug fixed by Mehreen's team, handover note in Teams. demo prep for Wed
+standup 15/12 - David stuck on RLS policy for notes table, Megan pairing tmrw
+standup 17/12 - code freeze tomorrow!! Xinyue finishing PDF export. Bilan writing eval tests

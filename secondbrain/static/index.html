@@ -229,7 +229,7 @@
   <main>
     <div class="topbar">
       <h1 id="pageTitle">Ask</h1>
-      <div class="pills"><span class="pill">🔒 Runs only on this laptop</span><span class="pill plain" id="modelPill">Checking AI model…</span></div>
+      <div class="pills"><span class="pill plain" id="todayPill" hidden></span><span class="pill">🔒 Runs only on this laptop</span><span class="pill plain" id="modelPill">Checking AI model…</span></div>
     </div>
 
     <!-- ================= ASK ================= -->
@@ -258,12 +258,12 @@
           </div>
           <div class="card quick">
             <h2>Quick asks</h2>
+            <button data-q="What was I in the middle of before the holidays?"><span class="ico">🎄</span>Before the holidays</button>
             <button data-q="What actions are overdue?"><span class="ico">⏰</span>What's overdue?</button>
-            <button data-q="What happened this week?"><span class="ico">🗓</span>What happened this week?</button>
-            <button data-q="What decisions were made in the last month?"><span class="ico">✅</span>Recent decisions</button>
-            <button data-q="When is the patient app launching?"><span class="ico">🚀</span>When is the launch?</button>
-            <button data-q="What happened to the Q4 marketing budget?"><span class="ico">📸</span>Q4 budget (from a screenshot)</button>
-            <button data-q="What did we decide about the Q2 budget for Lagos?"><span class="ico">❔</span>Something not in my notes</button>
+            <button data-q="When does the pilot start?"><span class="ico">🚀</span>When does the pilot start?</button>
+            <button data-q="What did Megan cover in the intern training?"><span class="ico">🎓</span>Megan's training</button>
+            <button data-q="What did Sophie ask for at the demo?"><span class="ico">💬</span>Sophie's requests</button>
+            <button data-q="What is the budget for next summer's interns?"><span class="ico">❔</span>Something not in my notes</button>
           </div>
           <div class="card">
             <h2>This session</h2>
@@ -593,6 +593,7 @@ $("greeting").textContent = h < 12 ? "Good morning." : h < 18 ? "Good afternoon.
 let nextMeeting = null;
 async function loadState() {
   const s = await api("/api/state");
+  if (s.demo_date) { $("todayPill").hidden = false; $("todayPill").textContent = `📅 Today: ${s.today_label} (demo date)`; }
   const ms = s.model_status, pill = $("modelPill");
   if (!ms.running) { pill.className = "pill bad"; pill.textContent = "AI model not running · open Ollama"; }
   else if (!ms.model_ready) { pill.className = "pill warn"; pill.textContent = `Model ${s.model} not downloaded`; }
@@ -736,7 +737,7 @@ async function ask(question) {
         q(".body").innerHTML = `<span class="thinking"><span class="spin"></span>Found ${ev.sources.length} matching notes in ${secs}s. Writing…</span>`;
         showSources(ev.sources, false);
         if (ev.brief && ev.brief.new_since.length) q(".codebox").insertAdjacentHTML("beforeend",
-          `<div class="box warn" style="background:var(--a-soft);color:var(--text);margin:0 0 10px"><b style="color:var(--a-text)">📌 New since your last meeting${ev.brief.last_meeting ? " on " + esc(ev.brief.last_meeting) : ""} · found by code</b>`
+          `<div class="box warn" style="background:var(--a-soft);color:var(--text);margin:0 0 10px"><b style="color:var(--a-text)">📌 ${ev.brief.last_meeting ? "New since your last meeting on " + esc(ev.brief.last_meeting) : "What you wrote about them recently"} · found by code</b>`
           + ev.brief.new_since.filter((x, i, a) => a.findIndex(y => y.file === x.file) === i).map(x => `<div>${KIND_ICON[x.kind] || "📝"} ${esc(x.file)} <span class="muted">· ${esc(x.date)}</span> <button class="cite" data-n="${x.n}">${x.n}</button></div>`).join("") + `</div>`);
         if (ev.spelling && ev.spelling.length) q(".codebox").insertAdjacentHTML("beforeend", `<div class="box miss"><b>Spelling</b>I read ${ev.spelling.map(s => `“${esc(s.typed)}” as “${esc(s.read_as)}”`).join(", ")}.</div>`);
         if (ev.missing.length) q(".codebox").innerHTML += `<div class="box miss"><b>Checked by code</b>None of your notes mention: ${esc(ev.missing.join(", "))}. Anything about that is only loosely related.</div>`;

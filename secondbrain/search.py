@@ -25,7 +25,8 @@ STOP = set(
     monday tuesday wednesday thursday friday saturday sunday today tomorrow yesterday
     january february march april june july august september october november december
     jan feb mar apr jun jul aug sep sept oct nov dec week weeks month months day days
-    past recent recently lately upcoming coming made make happening
+    past recent recently lately upcoming coming made make happening middle holiday holidays
+    break christmas before
     wrote write written writing show tell read look see think thinks thinking""".split()
 )
 # Words like "decision" are in STOP for matching, but we still use them to
@@ -104,6 +105,9 @@ def time_window(question, today):
     q = question.lower()
     d = dt.timedelta
     rules = [
+        ("before the holiday", (today - d(35), today - d(14))),
+        ("before the break", (today - d(35), today - d(14))),
+        ("before christmas", (today - d(35), today - d(14))),
         ("yesterday", (today - d(1), today - d(1))),
         ("today", (today, today)),
         ("next week", (today, today + d(7))),

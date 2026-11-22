@@ -1,0 +1,6 @@
+after the hols - intern check-in w/ B + D
+ask them to EXPLAIN, not show:
+ - RLS?? why does the notes table need it
+ - server vs client components
+ - how do we test a prompt for injection
+ - what makes AI code ok to ship

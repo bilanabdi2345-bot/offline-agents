@@ -25,26 +25,29 @@ Screenshots and whiteboard photos are read by Apple's built-in Vision text reade
 
 ## The moment it fixes
 
-You have a 1:1 with Priya in ten minutes. What you need is spread across a
-handwritten notebook page, stand-up scraps, a whiteboard photo, an action list
-and last meeting's notes.
+**Monday 5 January. Tommy's first day back.**
 
-Click **Prepare me**. Codicilix builds the brief in two layers:
+Tommy is a manager in Pfizer's AI Studio. Q4 was a blur: a demo for the Medical
+team, code freeze, a Newpage team covering bugs from Chennai over Christmas, and
+two new interns, Bilan and David, who Megan trained before the break. Tommy
+promised himself he'd check in January whether the training stuck. That check-in
+is tomorrow, and his notes are everywhere.
+
+He clicks **Prepare me**. Codicilix builds the brief in two layers:
 
 **Found by code** (reliable, can't be dropped or invented):
-- 📌 **New since your last meeting** — it finds the last 1:1 in your calendar
-  and lists every note, photo and scrap about Priya written since then
-- **Open actions** about her, correctly marked overdue or not
-- **Last time** — your own notes from that meeting
+- 📌 **What you wrote about them recently**: Megan's training notes, the
+  stand-up scraps, his handwritten note, his "ask them to EXPLAIN" scrap
+- **Open actions** about them, correctly marked overdue or not
+  (Megan's slides: overdue. The interns' own tasks: not due yet)
 
 **Written by the local AI** (the judgement):
-- **What's new** — the most important changes, in 2-3 points
-- **Ask about** — questions to ask in the meeting
+- **What's new**: the most important things, in 2-3 points
+- **Ask about**: questions to ask Bilan and David, such as "explain row level security"
 
 Every point links to the note it came from. Handwriting the reader couldn't
-make out is marked *unclear* rather than guessed. Spelling mistakes in your
-questions are forgiven ("prya" → Priya), and when something isn't in your notes
-it says so instead of guessing.
+make out is marked *unclear* rather than guessed. Spelling mistakes are forgiven
+("Megn" → Megan), and when something isn't in the notes it says so.
 
 | | |
 |---|---|
@@ -61,7 +64,7 @@ it says so instead of guessing.
 | No copies | No database, no search index, no cache, no log file. Notes are read fresh for each question, in memory, then dropped. A write guard blocks the app from saving any file. The model is unloaded after every answer. | The trust panel shows "saved 0 files". **Try to break the rule** also tries to save a copy and is blocked. |
 | Your notes stay as they were | Files are only ever opened read-only. | A fingerprint of all notes is taken at start and re-checked live. |
 | You choose what it sees | Notes are split into compartments (Team, Projects, Personal). Switched off means never opened. | Switch Personal off and ask about it: the answer says it didn't look there, and the file list proves it. |
-| Honest when unsure | If nothing matches, the AI isn't even asked; you get "I couldn't find that". Warnings for overdue, unfinished, old and private notes come from code, not the AI. | Ask about something that isn't there, e.g. "the Q2 budget for Lagos". |
+| Honest when unsure | If nothing matches, the AI isn't even asked; you get "I couldn't find that". Warnings for overdue, unfinished, old and private notes come from code, not the AI. | Ask about something that isn't there, e.g. "the budget for next summer's interns". |
 | Safe even next to other programs | A new secret key every launch, only given to the app window. Other programs on the laptop (even malware) and other websites are refused. The AI has no tools, so a note with hidden instructions can't make it send anything. | Open http://127.0.0.1:8765 in a new tab without the key: it's refused. |
 | Explains itself | Every answer lists the files read, the files used, dates and ages, and a confidence level with the reason. | Click any numbered source chip. |
 
@@ -102,12 +105,20 @@ It reads `.md`, `.txt`, `.csv` action lists, `.ics` calendar files, saved links 
 
 ## Sample notes
 
-`sample-notes/` holds made-up notes for a made-up manager, written for this demo.
-They include a real handwritten notebook page (photographed), a whiteboard photo
-and a screenshot, so the demo shows paper notes being read on the laptop.
-They are messy on purpose: a launch date that was changed later, an unfinished
-draft that still has the old date, overdue actions, scraps with no dates, and a
-private folder.
+`sample-notes/` is a made-up manager's notes, written for this demo. The story
+is set in Pfizer's AI Studio working alongside Newpage, but every person, project
+and detail is invented (apart from the two interns, who are the team that built
+this). No real company information is used.
+
+- **Tommy**: AI Studio manager. **Megan**: senior developer who trains the interns.
+- **Bilan** and **David**: AI Application Developer interns.
+- **Xinyue**: Newpage Forward Deployed Engineer, Bristol. **Mehreen**: Newpage lead, Chennai.
+- **Sophie**: Medical team lead, who asked for the prototype.
+
+The notes are messy on purpose: a pilot date that moved from 12 to 26 January,
+an unfinished handover draft that still says 12 January, an overdue action,
+scraps with no dates, a private folder, and photos of real handwritten notes.
+The app treats **5 January 2027** as "today" (`demo_today` in `config.json`).
 
 ## Run the tests
 

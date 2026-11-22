@@ -45,7 +45,7 @@ This was our answer to "split the assistant into fragments": the assistant is on
   - *unfinished draft*: a draft file or one marked unfinished,
   - *older than 6 weeks*: things may have changed,
   - *marked private*: a note that says confidential or private.
-- The AI is told to trust newer notes over older ones and to say when an older note is out of date. For example, the launch moved from 1 December to 19 January, but an unfinished draft still says 1 December.
+- The AI is told to trust newer notes over older ones and to say when an older note is out of date. For example, the pilot moved from 12 to 26 January, but an unfinished handover draft still says 12 January.
 - **Confidence** (high, medium or low) is worked out from how many notes were used, how recent they are, and whether they carry warnings. The reason is shown in plain words.
 
 ## 6. Coping with messy notes

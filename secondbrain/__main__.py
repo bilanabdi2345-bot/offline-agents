@@ -33,6 +33,9 @@ def load_config():
 
 def main():
     config = load_config()
+    # For the demo, pretend today is a set date (e.g. the first day back in January).
+    if config.get("demo_today") and not os.environ.get("TODAY"):
+        os.environ["TODAY"] = config["demo_today"]
     port = int(os.environ.get("PORT", config.get("port", 8765)))
     # A fresh secret key for this launch. Only the window we open gets it.
     token = os.environ.get("SECOND_BRAIN_TOKEN") or secrets.token_urlsafe(24)

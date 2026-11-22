@@ -3,6 +3,6 @@
 <plist version="1.0">
 <dict>
 	<key>URL</key>
-	<string>https://example.org/courses/wcag-accessibility-foundations</string>
+	<string>https://supabase.com/docs/guides/database/postgres/row-level-security</string>
 </dict>
 </plist>

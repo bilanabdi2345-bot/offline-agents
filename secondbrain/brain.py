@@ -374,7 +374,8 @@ def prepare(question, compartments, model=None):
     }
 
 
-TITLE_SKIP = {"meeting", "call", "catch", "sync", "team", "group", "with", "weekly", "monthly", "presenting"}
+TITLE_SKIP = {"meeting", "call", "catch", "sync", "team", "group", "with", "weekly", "monthly", "presenting",
+              "check", "checkin", "review", "start"}
 
 
 def meeting_sources(title, question, chunks, day, info, limit=8):
@@ -405,7 +406,8 @@ def meeting_sources(title, question, chunks, day, info, limit=8):
     # 1. Since last time (newest first)
     for c in notes_about:
         if c.date and c.date <= day and (last_date is None or c.date > last_date) and (day - c.date).days <= 45:
-            if sum(1 for x in picked if sections[id(x)] == "SINCE LAST TIME") < 4:
+            files_so_far = {x.rel for x in picked if sections[id(x)] == "SINCE LAST TIME"}
+            if c.rel in files_so_far or len(files_so_far) < 5:
                 take(c, "SINCE LAST TIME")
     # 2. Last time
     if last_date:
